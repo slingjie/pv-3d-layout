@@ -103,11 +103,13 @@
       background: color-mix(in srgb, var(--panel-2), transparent 6%);
       color: var(--muted);
       box-shadow: 0 4px 18px rgba(17, 29, 34, .09);
-      max-width: 230px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      max-width: 440px;
+      white-space: normal;
+      line-height: 1.35;
+      text-align: right;
     }
+    .file-status span { display: block; }
+    .file-status .geo-status { margin-top: 2px; color: var(--ink); font-size: 11.5px; }
     .hint {
       position: absolute;
       z-index: 2;
@@ -216,8 +218,12 @@
       cursor: pointer;
     }
     .generate:hover { background: var(--accent-strong); }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
     .stat { padding: 11px 8px 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; }
+    .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .validation-hints { display: grid; gap: 4px; margin-top: 10px; }
+    .validation-hint { display: none; margin: 0; color: var(--warn); font-size: 11.5px; line-height: 1.4; }
+    .validation-hint.show { display: block; }
     .stat b { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; line-height: 1.15; letter-spacing: -.04em; }
     .stat span { color: var(--muted); font-size: 11px; }
     .plane {
@@ -243,6 +249,29 @@
     .note { margin: 11px 0 0; color: var(--muted); font-size: 11.5px; }
     .status-line { margin-top: 10px; color: var(--muted); font-size: 12px; min-height: 18px; }
     .status-line.error { color: #b53d32; }
+    select, input[type="text"] { width: 100%; height: 39px; padding: 8px 10px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
+    .library-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .library-head h2 { margin: 0; }
+    .compact-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .mini { min-height: 32px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: var(--ink); cursor: pointer; font-size: 11.5px; font-weight: 650; }
+    .mini:hover { border-color: var(--accent); }
+    .mini.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .mini:disabled { opacity: .48; cursor: not-allowed; border-color: var(--line); }
+    .mini.danger { color: #ae3d34; }
+    .manager-row { padding: 10px 0; border-top: 1px solid var(--line); }
+    .manager-row:first-child { border-top: 0; }
+    .manager-top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+    .manager-top button { text-align: left; background: none; border: 0; padding: 2px 0; color: var(--ink); cursor: pointer; font-weight: 700; }
+    .manager-top button.active { color: var(--accent-strong); }
+    .manager-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .visibility { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; cursor: pointer; }
+    .visibility input { width: 16px; height: 16px; accent-color: var(--accent); }
+    .roof-editor { margin-top: 12px; padding: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; }
+    .roof-editor .fields { margin-bottom: 9px; }
+    .roof-summary { margin-top: 10px; display: grid; gap: 5px; }
+    .roof-summary-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 11.5px; }
+    .roof-summary-row b { color: var(--ink); text-align: right; }
+    .empty { padding: 10px 0; color: var(--muted); font-size: 12px; }
 
     @media (max-width: 760px) {
       body { overflow: auto; }
@@ -251,7 +280,7 @@
       aside { height: auto; overflow: visible; border-left: 0; border-top: 1px solid var(--line); padding: 17px 16px max(24px, env(safe-area-inset-bottom)); }
       .toolbar { left: 10px; right: 10px; top: 10px; gap: 6px; }
       .tool-btn { padding: 8px 10px; min-height: 36px; font-size: 12px; }
-      .file-status { order: 5; width: 100%; margin-left: 0; max-width: none; font-size: 11px; background: color-mix(in srgb, var(--panel-2), transparent 15%); }
+      .file-status { order: 5; width: 100%; margin-left: 0; max-width: none; font-size: 11px; text-align: left; background: color-mix(in srgb, var(--panel-2), transparent 15%); }
       .hint { left: 10px; bottom: 10px; width: calc(100% - 72px); font-size: 11.5px; padding: 9px 10px; }
       .zoom-tools { right: 10px; bottom: 10px; }
       .icon-btn { width: 38px; height: 38px; }
@@ -271,11 +300,10 @@
       <div class="toolbar">
         <button class="tool-btn primary" id="loadBtn">载入模型文件夹</button>
         <button class="tool-btn" id="demoBtn">演示模型</button>
-        <button class="tool-btn" id="pickBtn">选屋顶面</button>
         <button class="tool-btn" id="shotBtn">导出图片</button>
-        <span class="file-status" id="fileStatus">演示场景 · 1 单位 = 1 米</span>
+        <span class="file-status" id="fileStatus"><span id="modelStatus">演示场景 · 1 单位 = 1 米</span><span class="geo-status" id="geoStatus">方位未知 · 未读取 metadata.xml</span></span>
       </div>
-      <div class="hint" id="hint"><strong>已载入演示模型</strong><span class="dot">·</span>拖动旋转，滚轮缩放；点“选屋顶面”后在模型上单击。</div>
+      <div class="hint" id="hint"><strong>已载入演示模型</strong><span class="dot">·</span>拖动旋转，滚轮缩放；点“点选西南角”后选择阵列起排位置。</div>
       <div class="zoom-tools" aria-label="视图缩放">
         <button class="icon-btn" id="zoomIn" aria-label="放大">＋</button>
         <button class="icon-btn" id="zoomOut" aria-label="缩小">−</button>
@@ -288,73 +316,103 @@
 
     <aside>
       <section class="section">
-        <h2>排布参数</h2>
-        <p class="sub">先选基准面，再按行列生成组件阵列。</p>
+        <div class="library-head"><h2>排布方案库</h2><button class="mini" id="addSchemeBtn">新建方案</button></div>
+        <p class="sub">参数以方案为单位保存；编辑当前方案会同步更新关联屋面。</p>
+        <label>当前方案<select id="schemeSelect"></select></label>
+        <div class="compact-actions">
+          <button class="mini" id="renameSchemeBtn">重命名</button>
+          <button class="mini danger" id="deleteSchemeBtn">删除</button>
+          <button class="mini" id="exportSchemesBtn">导出方案</button>
+          <button class="mini" id="importSchemesBtn">导入方案</button>
+        </div>
+        <input id="schemeName" type="text" value="标准 620Wp 方案" aria-label="方案名称" style="margin-top:9px" />
+        <input id="schemeFileInput" type="file" accept="application/json,.json" hidden />
+      </section>
+
+      <section class="section">
+        <h2>方案参数</h2>
+        <p class="sub">以下修改写入当前方案，并刷新所有关联屋面。</p>
         <div class="fields">
           <label>组件长度<div class="input-wrap"><input id="panelL" type="number" min="0.1" step="0.001" value="2.382"><span class="unit">m</span></div></label>
           <label>组件宽度<div class="input-wrap"><input id="panelW" type="number" min="0.1" step="0.001" value="1.134"><span class="unit">m</span></div></label>
           <label>单块功率<div class="input-wrap"><input id="power" type="number" min="1" step="1" value="620"><span class="unit">Wp</span></div></label>
           <label>倾角<div class="input-wrap"><input id="tilt" type="number" min="0" max="60" step="1" value="5"><span class="unit">°</span></div></label>
-          <label>行数<div class="input-wrap"><input id="rows" type="number" min="1" max="50" step="1" value="4"><span class="unit">行</span></div></label>
-          <label>列数<div class="input-wrap"><input id="cols" type="number" min="1" max="50" step="1" value="8"><span class="unit">列</span></div></label>
-          <label>行间净距<div class="input-wrap"><input id="rowGap" type="number" min="0" max="20" step="0.1" value="0.6"><span class="unit">m</span></div></label>
-          <label>列间净距<div class="input-wrap"><input id="colGap" type="number" min="0" max="5" step="0.01" value="0.03"><span class="unit">m</span></div></label>
+          <label>总行数<div class="input-wrap"><input id="totalRows" type="number" min="1" max="200" step="1" value="4"><span class="unit">行</span></div></label>
+          <label>总列数<div class="input-wrap"><input id="totalCols" type="number" min="1" max="200" step="1" value="8"><span class="unit">列</span></div></label>
+          <label>每串行数<div class="input-wrap"><input id="stringRows" type="number" min="1" max="50" step="1" value="2"><span class="unit">行</span></div></label>
+          <label>每串列数<div class="input-wrap"><input id="stringCols" type="number" min="1" max="50" step="1" value="4"><span class="unit">列</span></div></label>
+          <label>单元内间距 X<div class="input-wrap"><input id="unitGapX" type="number" min="0" max="5" step="0.01" value="0.03"><span class="unit">m</span></div></label>
+          <label>单元内间距 Y<div class="input-wrap"><input id="unitGapY" type="number" min="0" max="20" step="0.1" value="0.6"><span class="unit">m</span></div></label>
+          <label>组串间距 X<div class="input-wrap"><input id="stringGapX" type="number" min="0" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
+          <label>组串间距 Y<div class="input-wrap"><input id="stringGapY" type="number" min="0" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
           <label class="wide">阵列旋转<div class="input-wrap"><input id="azimuth" type="number" min="-180" max="180" step="1" value="0"><span class="unit">°</span></div></label>
         </div>
-
+        <div class="validation-hints" id="validationHints" aria-live="polite">
+          <p class="validation-hint" id="rowRemainderHint">总行数不能被每串行数整除，将产生不完整串</p>
+          <p class="validation-hint" id="colRemainderHint">总列数不能被每串列数整除，将产生不完整串</p>
+        </div>
         <div class="adjust-group">
-          <div class="group-head">
-            <div><h3>阵列位置微调</h3><p>沿当前阵列平面移动；约定 OBJ +X 为东、+Y 为北。</p></div>
-            <button class="reset-btn" id="resetPosition" type="button">位置归零</button>
-          </div>
+          <div class="group-head"><div><h3>阵列位置微调</h3><p id="offsetBasis">沿当前阵列平面移动；未识别坐标系时按 OBJ X/Y 轴调整。</p></div><button class="reset-btn" id="resetPosition" type="button">位置归零</button></div>
           <div class="fields">
-            <label>东西偏移（+东）<div class="input-wrap"><input id="offsetEW" type="number" min="-20" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
-            <label>南北偏移（+北）<div class="input-wrap"><input id="offsetNS" type="number" min="-20" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
+            <label><span id="offsetEWLabel">X 轴偏移</span><div class="input-wrap"><input id="offsetEW" type="number" min="-20" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
+            <label><span id="offsetNSLabel">Y 轴偏移</span><div class="input-wrap"><input id="offsetNS" type="number" min="-20" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
             <label class="wide">高度偏移（沿法向）<div class="input-wrap"><input id="offsetH" type="number" min="-5" max="5" step="0.05" value="0"><span class="unit">m</span></div></label>
           </div>
         </div>
-
         <div class="adjust-group">
-          <div class="group-head">
-            <div><h3>阵列平面角度</h3><p>修正点选三角面法向的误差，不替代组件倾角。</p></div>
-            <button class="reset-btn" id="resetAngle" type="button">角度归零</button>
-          </div>
+          <div class="group-head"><div><h3>阵列平面角度</h3><p>修正点选三角面法向的误差，不替代组件倾角。</p></div><button class="reset-btn" id="resetAngle" type="button">角度归零</button></div>
           <div class="fields">
             <label>俯仰修正<div class="input-wrap"><input id="planePitch" type="number" min="-10" max="10" step="0.5" value="0"><span class="unit">°</span></div></label>
             <label>横滚修正<div class="input-wrap"><input id="planeRoll" type="number" min="-10" max="10" step="0.5" value="0"><span class="unit">°</span></div></label>
           </div>
         </div>
-
-        <button class="generate" id="generateBtn">生成 / 更新阵列</button>
-        <div class="status-line" id="statusLine">阵列已生成，可直接调整参数。</div>
+        <button class="generate" id="generateBtn">应用方案并重新生成</button>
+        <div class="status-line" id="statusLine">已载入演示项目。</div>
       </section>
 
       <section class="section">
-        <h2>结果速览</h2>
-        <p class="sub">用于方案预览，不替代施工图校核。</p>
+        <div class="library-head"><h2>屋面管理</h2><button class="mini" id="addRoofBtn">新增屋面</button></div>
+        <p class="sub">每个屋面独立基准面、范围、关联方案与显示状态。</p>
+        <div id="roofList"></div>
+        <div class="roof-editor" id="roofEditor">
+          <div class="fields">
+            <label class="wide">屋面名称<input id="roofName" type="text" /></label>
+            <label class="wide">关联方案<select id="roofSchemeSelect"></select></label>
+          </div>
+          <div class="compact-actions">
+            <button class="mini" id="setBaseBtn">点选西南角</button>
+            <button class="mini" id="drawPolygonBtn">绘制范围</button>
+            <button class="mini primary" id="finishPolygonBtn" disabled>完成绘制</button>
+            <button class="mini" id="undoVertexBtn">撤销顶点</button>
+            <button class="mini danger" id="deleteRoofBtn">删除屋面</button>
+          </div>
+          <div class="manager-meta" id="polygonStatus">尚未绘制范围</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>统计汇总</h2>
+        <p class="sub">隐藏仅影响视图，统计仍计入全部屋面。</p>
         <div class="stats">
+          <div class="stat"><b id="stringCountStat">4</b><span>完整串数</span></div>
+          <div class="stat"><b id="panelsPerStringStat">8</b><span>完整串每串块数</span></div>
+          <div class="stat"><b id="incompleteStringStat">0 × 0</b><span>不完整串 × 块数</span></div>
           <div class="stat"><b id="countStat">32</b><span>组件块数</span></div>
           <div class="stat"><b id="kwpStat">19.84</b><span>装机容量 kWp</span></div>
           <div class="stat"><b id="areaStat">86.4</b><span>组件总表面积 m²</span></div>
         </div>
+        <div class="roof-summary" id="roofSummary"></div>
       </section>
 
       <section class="section">
-        <h2>当前基准面</h2>
-        <p class="sub">对照点选基准与位置、角度调整后的阵列平面。</p>
-        <div class="plane" id="planeCard">
-          <strong>演示屋顶 · 水平面</strong>
-          <div class="coords" id="planeCoords">中心 (0.00, 0.00, 4.20)<br>法向 (0.000, 0.000, 1.000)</div>
-        </div>
+        <h2>当前屋面基准</h2>
+        <div class="plane" id="planeCard"><strong>演示屋顶</strong><div class="coords" id="planeCoords"></div></div>
       </section>
 
       <section class="section">
-        <h2>本次数据</h2>
-        <div class="actions">
-          <button class="secondary" id="jsonBtn">下载参数 JSON</button>
-          <button class="secondary danger" id="clearBtn">清除组件</button>
-        </div>
-        <p class="note">选择包含 OBJ、MTL 和 JPG/PNG 贴图的完整文件夹；模型与参数只在当前页面内存中处理。当前按 OBJ 的 Z 轴为“上”、1 单位为 1 米。</p>
+        <h2>本次项目</h2>
+        <div class="actions"><button class="secondary" id="jsonBtn">下载项目 JSON</button><button class="secondary danger" id="clearBtn">清除全部屋面</button></div>
+        <p class="note">OBJ 不缩放，按 1 单位 = 1 米、Z 轴为上；模型、方案与屋面数据只在当前页面内存中处理。</p>
       </section>
     </aside>
   </div>
@@ -369,9 +427,10 @@
   var loading = document.getElementById("loading");
   var loadingText = document.getElementById("loadingText");
   var fileStatus = document.getElementById("fileStatus");
+  var modelStatus = document.getElementById("modelStatus");
+  var geoStatus = document.getElementById("geoStatus");
   var hint = document.getElementById("hint");
   var statusLine = document.getElementById("statusLine");
-  var pickBtn = document.getElementById("pickBtn");
 
   if (!gl) {
     stage.innerHTML = '<div style="padding:32px;max-width:560px"><h2>当前浏览器无法启动 WebGL 2</h2><p>请改用最新版 Chrome、Edge 或 Safari 后重试。</p></div>';
@@ -459,9 +518,11 @@
   function disposeMesh(m){ if(!m)return; gl.deleteVertexArray(m.vao); gl.deleteBuffer(m.pb); gl.deleteBuffer(m.nb); gl.deleteBuffer(m.tb); if(m.texture)gl.deleteTexture(m.texture); }
   function disposeModelMeshes(){modelMeshes.forEach(disposeMesh);modelMeshes=[];}
 
-  var modelMeshes=[], modelPositions=null, panelMesh=null, panelLines=null, markerMesh=null;
-  var modelCenter=[0,0,0], modelName="演示场景", modelRadius=24;
-  var selected={ point:[0,0,4.2], normal:[0,0,1] };
+  var modelMeshes=[], modelPositions=null, panelMeshes=[], incompletePanelMesh=null, panelLines=null, incompletePanelLines=null, markerMesh=null, roofOutlineMesh=null, northArrowMesh=null;
+  var stringPaletteLight=[[.025,.19,.27,1],[.04,.31,.36,1],[.07,.39,.31,1],[.10,.25,.40,1],[.12,.34,.45,1],[.04,.27,.22,1]];
+  var stringPaletteDark=[[.05,.31,.40,1],[.07,.42,.47,1],[.12,.48,.39,1],[.16,.35,.52,1],[.18,.45,.56,1],[.08,.39,.31,1]];
+  var incompleteColorLight=[.46,.68,.70,1],incompleteColorDark=[.40,.57,.59,1];
+  var modelCenter=[0,0,0], modelName="演示场景", modelRadius=24, modelSize=[42,32,6.2], spatialReference=null;
   var pickMode=false;
   var camera={yaw:-0.72,pitch:0.72,distance:44,target:[0,0,2.8]};
   var lastVP=null, lastEye=null;
@@ -487,12 +548,26 @@
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.useProgram(prog); gl.uniformMatrix4fv(loc.vp,false,lastVP); gl.uniform3fv(loc.light,[-.35,-.45,.82]);
     var dark=matchMedia("(prefers-color-scheme: dark)").matches;
     modelMeshes.forEach(function(m){drawMesh(m,dark?[.38,.45,.47,1]:[.53,.59,.61,1],1);});
-    drawMesh(panelMesh,dark?[.035,.22,.28,1]:[.025,.19,.27,1],1);
-    gl.disable(gl.CULL_FACE); drawMesh(panelLines,dark?[.40,.88,.78,1]:[.42,.88,.80,1],0); drawMesh(markerMesh,dark?[1,.67,.26,1]:[.90,.42,.10,1],0);
+    panelMeshes.forEach(function(m){drawMesh(m,(dark?stringPaletteDark:stringPaletteLight)[m.stringColor||0],1);});
+    drawMesh(incompletePanelMesh,dark?incompleteColorDark:incompleteColorLight,1);
+    gl.disable(gl.CULL_FACE); drawMesh(panelLines,dark?[.40,.88,.78,1]:[.42,.88,.80,1],0); drawMesh(incompletePanelLines,dark?[.72,.83,.83,1]:[.70,.82,.82,1],0); drawMesh(roofOutlineMesh,dark?[1,.72,.32,1]:[.88,.35,.08,1],0); drawMesh(markerMesh,dark?[1,.67,.26,1]:[.90,.42,.10,1],0); drawMesh(northArrowMesh,dark?[.48,.94,.80,1]:[.02,.42,.34,1],0);
     requestAnimationFrame(render);
   }
   function resizeCanvas(){ var dpr=Math.min(2,window.devicePixelRatio||1),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
 
+  function modelSizeLabel(size){return "长 "+size[0].toFixed(1)+" × 宽 "+size[1].toFixed(1)+" × 高 "+size[2].toFixed(1)+" m";}
+  function setFileStatus(modelText,geoText){modelStatus.textContent=modelText;geoStatus.textContent=geoText||"方位未知 · 未读取 metadata.xml";}
+  function updateOrientationLabels(){
+    var known=!!(spatialReference&&spatialReference.northKnown);
+    document.getElementById("offsetBasis").textContent=known?"坐标已识别：OBJ +X 为东、+Y 为北。":"沿当前阵列平面移动；未识别坐标系时按 OBJ X/Y 轴调整。";
+    document.getElementById("offsetEWLabel").textContent=known?"东西偏移（+东）":"X 轴偏移";
+    document.getElementById("offsetNSLabel").textContent=known?"南北偏移（+北）":"Y 轴偏移";
+  }
+  function spatialLabel(ref){
+    if(!ref)return "方位未知 · 未读取 metadata.xml";
+    var origin=ref.origin,originText="原点 "+origin[0].toFixed(3)+", "+origin[1].toFixed(3)+", "+origin[2].toFixed(3)+" m";
+    return (ref.label||ref.srs)+" · "+originText+(ref.northKnown?" · +Y 为北":" · 方位未知");
+  }
   function tri(outP,outN,a,b,c){ var n=norm(cross(sub(b,a),sub(c,a))); outP.push.apply(outP,a.concat(b,c)); for(var i=0;i<3;i++)outN.push.apply(outN,n); }
   function quad(outP,outN,a,b,c,d){ tri(outP,outN,a,b,c); tri(outP,outN,a,c,d); }
   function box(outP,outN,center,size){
@@ -500,16 +575,47 @@
     var p=[[-x,-y,-z],[x,-y,-z],[x,y,-z],[-x,y,-z],[-x,-y,z],[x,-y,z],[x,y,z],[-x,y,z]].map(function(q){return add(c,q);});
     quad(outP,outN,p[4],p[5],p[6],p[7]); quad(outP,outN,p[1],p[0],p[3],p[2]); quad(outP,outN,p[0],p[4],p[7],p[3]); quad(outP,outN,p[5],p[1],p[2],p[6]); quad(outP,outN,p[3],p[7],p[6],p[2]); quad(outP,outN,p[0],p[1],p[5],p[4]);
   }
+  var defaultParams={length:2.382,width:1.134,power:620,tilt:5,totalRows:4,totalCols:8,stringRows:2,stringCols:4,unitGapX:.03,unitGapY:.6,stringGapX:0,stringGapY:0,azimuth:0,eastOffset:0,northOffset:0,heightOffset:0,planePitch:0,planeRoll:0};
+  var schemes=[],roofs=[],activeSchemeId=null,activeRoofId=null,interactionMode=null,nextId=1;
+  var paramIds=["panelL","panelW","power","tilt","totalRows","totalCols","stringRows","stringCols","unitGapX","unitGapY","stringGapX","stringGapY","azimuth","offsetEW","offsetNS","offsetH","planePitch","planeRoll"];
+  var paramKeys=["length","width","power","tilt","totalRows","totalCols","stringRows","stringCols","unitGapX","unitGapY","stringGapX","stringGapY","azimuth","eastOffset","northOffset","heightOffset","planePitch","planeRoll"];
+  function uid(prefix){return prefix+"-"+(nextId++);}
+  function cloneParams(src){
+    src=src||{};
+    var migrated={};Object.keys(src).forEach(function(k){migrated[k]=src[k];});
+    if(migrated.totalRows==null&&migrated.rows!=null)migrated.totalRows=migrated.rows;
+    if(migrated.totalCols==null&&migrated.cols!=null)migrated.totalCols=migrated.cols;
+    if(migrated.unitGapX==null&&migrated.colGap!=null)migrated.unitGapX=migrated.colGap;
+    if(migrated.unitGapY==null&&migrated.rowGap!=null)migrated.unitGapY=migrated.rowGap;
+    if(migrated.stringRows==null)migrated.stringRows=migrated.totalRows||defaultParams.stringRows;
+    if(migrated.stringCols==null)migrated.stringCols=migrated.totalCols||defaultParams.stringCols;
+    var out={};Object.keys(defaultParams).forEach(function(k){var v=Number(migrated[k]);out[k]=Number.isFinite(v)?v:defaultParams[k];});
+    ["totalRows","totalCols","stringRows","stringCols"].forEach(function(k){out[k]=Math.max(1,Math.round(out[k]));});return out;
+  }
+  function validateParams(pp){
+    var warnings=[];
+    if(pp.totalRows%pp.stringRows!==0)warnings.push("总行数不能被每串行数整除，将产生不完整串");
+    if(pp.totalCols%pp.stringCols!==0)warnings.push("总列数不能被每串列数整除，将产生不完整串");
+    return {valid:true,warnings:warnings,message:warnings.join("；")};
+  }
+  function updateValidationUI(pp){
+    var rowBad=pp.totalRows%pp.stringRows!==0,colBad=pp.totalCols%pp.stringCols!==0;
+    document.getElementById("rowRemainderHint").classList.toggle("show",rowBad);
+    document.getElementById("colRemainderHint").classList.toggle("show",colBad);
+  }
+  function activeScheme(){return schemes.find(function(x){return x.id===activeSchemeId;})||schemes[0]||null;}
+  function activeRoof(){return roofs.find(function(x){return x.id===activeRoofId;})||roofs[0]||null;}
+  function emptyStats(panelsPerString){return {stringCount:0,completeStringCount:0,incompleteStringCount:0,incompletePanelCount:0,panelsPerString:panelsPerString||0,count:0,capacityKwp:0,moduleAreaM2:0};}
   function loadDemo(){
     var p=[],n=[];
-    box(p,n,[0,0,-.3],[42,32,.6]);
-    box(p,n,[0,0,2.1],[20,14,4.2]);
-    box(p,n,[-13,7,1.5],[6,10,3]);
-    box(p,n,[13,-7,2.8],[8,12,5.6]);
+    box(p,n,[0,0,-.3],[42,32,.6]);box(p,n,[0,0,2.1],[20,14,4.2]);box(p,n,[-13,7,1.5],[6,10,3]);box(p,n,[13,-7,2.8],[8,12,5.6]);
     disposeModelMeshes(); modelPositions=new Float32Array(p); modelMeshes=[makeMesh(modelPositions,new Float32Array(n))];
-    modelCenter=[0,0,0]; modelRadius=26; modelName="演示场景"; selected={point:[0,0,4.2],normal:[0,0,1]}; camera={yaw:-.72,pitch:.72,distance:44,target:[0,0,2.8]};
-    fileStatus.textContent="演示场景 · 1 单位 = 1 米"; hint.innerHTML="<strong>已载入演示模型</strong><span class='dot'>·</span>拖动旋转，滚轮缩放；点“选屋顶面”后在模型上单击。";
-    updatePlaneCard("演示屋顶 · 水平面"); generatePanels(false); updateMarker(); setStatus("阵列已生成，可直接调整参数。",false);
+    modelCenter=[0,0,0];modelRadius=26;modelName="演示场景";modelSize=[42,32,6.2];spatialReference=null;camera={yaw:-.72,pitch:.72,distance:44,target:[0,0,2.8]};
+    schemes=[{id:uid("scheme"),name:"标准 620Wp 方案",params:cloneParams(defaultParams)}];activeSchemeId=schemes[0].id;
+    var demoSpans=arraySpans(defaultParams);
+    roofs=[{id:uid("roof"),name:"演示屋顶",visible:true,schemeId:activeSchemeId,point:[-demoSpans.spanX/2,-demoSpans.spanY/2,4.23],normal:[0,0,1],polygon:[[-9.8,-6.8,4.23],[9.8,-6.8,4.23],[9.8,6.8,4.23],[-9.8,6.8,4.23]],stats:emptyStats(defaultParams.stringRows*defaultParams.stringCols)}];activeRoofId=roofs[0].id;
+    setFileStatus("演示场景 · "+modelSizeLabel(modelSize)+" · 1 单位 = 1 米","方位未知 · 未读取 metadata.xml");updateOrientationLabels();hint.innerHTML="<strong>已载入演示项目</strong><span class='dot'>·</span>可新增屋面、点选阵列起排的西南角并逐点绘制范围。";
+    renderAllUI();generateAll(false);updateNorthArrow();setStatus("演示项目已就绪。",false);
   }
 
   function normalizePath(path){
@@ -531,6 +637,18 @@
     var name=normalizePath(clean).split("/").pop().toLowerCase(),same=index.byName[name];return same&&same.length===1?same[0]:null;
   }
   function readText(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(String(r.result));};r.onerror=function(){reject(new Error("无法读取 "+file.name));};r.readAsText(file);});}
+  function parseMetadata(text,path){
+    var doc=new DOMParser().parseFromString(text,"application/xml");
+    if(doc.querySelector("parsererror"))return null;
+    var srsNode=doc.querySelector("SRS"),originNode=doc.querySelector("SRSOrigin");
+    if(!srsNode||!originNode)return null;
+    var srs=srsNode.textContent.trim(),origin=originNode.textContent.split(/[\s,]+/).filter(Boolean).map(Number);
+    if(!srs||origin.length<3||!origin.slice(0,3).every(Number.isFinite))return null;
+    origin=origin.slice(0,3);
+    var key=srs.toUpperCase().replace(/\s+/g,""),profile=null;
+    if(key==="EPSG:4549")profile={label:"EPSG:4549 · CGCS2000 / 3度带 120°E",northKnown:true};
+    return {srs:srs,origin:origin,source:path,label:profile?profile.label:srs,northKnown:!!profile,axisConvention:profile?"X=east, Y=north, Z=up":null};
+  }
   function parseMTL(text,path,index){
     var result={},current=null,i=0,base=dirname(path);
     while(i<text.length){var j=text.indexOf("\n",i);if(j<0)j=text.length;var line=text.slice(i,j).trim();i=j+1;if(!line||line[0]==="#")continue;
@@ -583,13 +701,14 @@
     });
   }
   function loadModelFiles(fileList){
-    var files=Array.prototype.slice.call(fileList||[]),objFiles=files.filter(function(f){return /\.obj$/i.test(f.name);}),mtlFiles=files.filter(function(f){return /\.mtl$/i.test(f.name);});
+    var files=Array.prototype.slice.call(fileList||[]),objFiles=files.filter(function(f){return /\.obj$/i.test(f.name);}),mtlFiles=files.filter(function(f){return /\.mtl$/i.test(f.name);}),metadataFile=files.find(function(f){return f.name.toLowerCase()==="metadata.xml";})||null;
     if(!objFiles.length){setStatus("所选内容中没有找到 .obj 文件。请选择完整模型文件夹。",true);return;}
     var total=files.reduce(function(sum,f){return sum+f.size;},0);if(total>750*1024*1024){setStatus("所选文件总量超过 750 MB，浏览器内存可能不足，请先精简模型。",true);return;}
-    var index=buildFileIndex(files),root=filePath(objFiles[0]).split("/")[0]||objFiles[0].name,budget={used:0,limit:800000},bounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]},materialLibraries={};
-    loading.classList.add("show");loadingText.textContent="正在读取 "+objFiles.length+" 个 OBJ 与材质文件…";
-    Promise.all(mtlFiles.map(function(file){return readText(file).then(function(text){materialLibraries[filePath(file).toLowerCase()]=parseMTL(text,filePath(file),index);});})).then(function(){
-      loadingText.textContent="正在解析顶点、UV 与三角面…";
+    var index=buildFileIndex(files),root=filePath(objFiles[0]).split("/")[0]||objFiles[0].name,budget={used:0,limit:800000},bounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]},materialLibraries={},parsedSpatialReference=null;
+    loading.classList.add("show");loadingText.textContent="正在读取 "+objFiles.length+" 个 OBJ、材质与坐标信息…";
+    var metadataPromise=metadataFile?readText(metadataFile).then(function(text){return parseMetadata(text,filePath(metadataFile));}).catch(function(){return null;}):Promise.resolve(null);
+    Promise.all([metadataPromise,Promise.all(mtlFiles.map(function(file){return readText(file).then(function(text){materialLibraries[filePath(file).toLowerCase()]=parseMTL(text,filePath(file),index);});}))]).then(function(results){
+      parsedSpatialReference=results[0];loadingText.textContent="正在解析顶点、UV 与三角面…";
       return Promise.all(objFiles.map(function(file){return readText(file).then(function(text){var scoped=materialsForOBJ(text,filePath(file),index,materialLibraries);return parseOBJGeometry(text,filePath(file),scoped,budget,bounds);});}));
     }).then(function(groupSets){
       var groups=[];groupSets.forEach(function(set){groups=groups.concat(set);});if(!groups.length)throw new Error("未找到可用的 OBJ 顶点与面");
@@ -599,110 +718,139 @@
       loadingText.textContent="正在载入贴图…";
       var referenced=newMeshes.filter(function(mesh){return !!mesh.textureRequested;}).length;
       return Promise.all(newMeshes.map(function(mesh){if(!mesh.textureFile)return Promise.resolve(false);return createTexture(mesh.textureFile).then(function(tex){mesh.texture=tex;return !!tex;});})).then(function(textureResults){
-        disposeModelMeshes();modelMeshes=newMeshes;modelPositions=all;modelCenter=center;modelRadius=radius;modelName=root;disposeMesh(panelMesh);disposeMesh(panelLines);panelMesh=null;panelLines=null;selected=null;updateMarker();camera={yaw:-.72,pitch:.72,distance:Math.max(radius*2.3,4),target:[0,0,0]};
+        disposeModelMeshes();modelMeshes=newMeshes;modelPositions=all;modelCenter=center;modelRadius=radius;modelName=root;modelSize=size;spatialReference=parsedSpatialReference;updateOrientationLabels();panelMeshes.forEach(disposeMesh);disposeMesh(incompletePanelMesh);disposeMesh(panelLines);disposeMesh(incompletePanelLines);panelMeshes=[];incompletePanelMesh=null;panelLines=null;incompletePanelLines=null;roofs=[newRoof("屋面 1")];activeRoofId=roofs[0].id;updateMarker();updateRoofOutline();updateNorthArrow();camera={yaw:-.72,pitch:.72,distance:Math.max(radius*2.3,4),target:[0,0,0]};
         var loadedTextures=textureResults.filter(Boolean).length,missing=Math.max(0,referenced-loadedTextures),truncated=budget.used>=budget.limit;
-        fileStatus.textContent=root+" · "+objFiles.length+" OBJ · "+budget.used.toLocaleString()+" 三角面 · "+loadedTextures+" 贴图";
-        hint.innerHTML="<strong>文件夹模型已载入</strong><span class='dot'>·</span>点“选屋顶面”，再在目标屋顶上单击。";updatePlaneCard();updateStats(0);
-        var message=loadedTextures?"模型与 "+loadedTextures+" 张贴图已载入。下一步：选择屋顶面。":"几何已载入，但未找到可用贴图；请确认所选文件夹包含 MTL 与 JPG/PNG 贴图。";
+        setFileStatus(root+" · "+modelSizeLabel(modelSize)+" · "+objFiles.length+" OBJ · "+budget.used.toLocaleString()+" 三角面 · "+loadedTextures+" 贴图",spatialLabel(spatialReference));
+        hint.innerHTML="<strong>文件夹模型已载入</strong><span class='dot'>·</span>为当前屋面点选阵列起排的西南角位置，再逐点绘制范围。";renderAllUI();generateAll(false);
+        var message=loadedTextures?"模型与 "+loadedTextures+" 张贴图已载入。下一步：为当前屋面点选阵列起排的西南角位置。":"几何已载入，但未找到可用贴图；请确认所选文件夹包含 MTL 与 JPG/PNG 贴图。";
+        if(spatialReference&&spatialReference.northKnown)message+=" 已读取坐标系，场景指北针指向 +Y。";else if(metadataFile)message+=" metadata.xml 未提供可识别的投影方位，已按方位未知处理。";else message+=" 未找到 metadata.xml，已按方位未知处理。";
         if(missing)message+=" 另有 "+missing+" 张贴图未能读取。";if(truncated)message+=" 模型过大，预览只读取前 800,000 个三角面。";setStatus(message,!loadedTextures||truncated);
       });
     }).catch(function(err){setStatus("模型文件夹解析失败："+err.message,true);}).then(function(){loading.classList.remove("show");});
   }
 
   function inputNum(id,min,max){var v=Number(document.getElementById(id).value);if(!Number.isFinite(v))v=min;return Math.min(max,Math.max(min,v));}
-  function panelParams(){return {length:inputNum("panelL",.1,20),width:inputNum("panelW",.1,10),power:inputNum("power",1,3000),tilt:inputNum("tilt",0,60),rows:Math.round(inputNum("rows",1,50)),cols:Math.round(inputNum("cols",1,50)),rowGap:inputNum("rowGap",0,20),colGap:inputNum("colGap",0,5),azimuth:inputNum("azimuth",-180,180),eastOffset:inputNum("offsetEW",-20,20),northOffset:inputNum("offsetNS",-20,20),heightOffset:inputNum("offsetH",-5,5),planePitch:inputNum("planePitch",-10,10),planeRoll:inputNum("planeRoll",-10,10)};}
-  function adjustedPlane(pp){
-    var n0=norm(selected.normal); if(n0[2]<0)n0=mul(n0,-1);
-    var seed=Math.abs(dot(n0,[1,0,0]))<.9?[1,0,0]:[0,1,0];
-    var east0=norm(sub(seed,mul(n0,dot(seed,n0)))),north0=norm(cross(n0,east0));
-    var pitch=pp.planePitch*Math.PI/180,roll=pp.planeRoll*Math.PI/180;
-    var north1=norm(rotateAround(north0,east0,pitch)),normal1=norm(rotateAround(n0,east0,pitch));
-    var east2=norm(rotateAround(east0,north1,roll)),normal2=norm(rotateAround(normal1,north1,roll));
-    var north2=norm(cross(normal2,east2)); east2=norm(cross(north2,normal2));
-    var center=add(selected.point,add(mul(east2,pp.eastOffset),add(mul(north2,pp.northOffset),mul(normal2,pp.heightOffset))));
-    return {center:center,east:east2,north:north2,normal:normal2};
+  function panelParams(){return {length:inputNum("panelL",.1,20),width:inputNum("panelW",.1,10),power:inputNum("power",1,3000),tilt:inputNum("tilt",0,60),totalRows:Math.round(inputNum("totalRows",1,200)),totalCols:Math.round(inputNum("totalCols",1,200)),stringRows:Math.round(inputNum("stringRows",1,50)),stringCols:Math.round(inputNum("stringCols",1,50)),unitGapX:inputNum("unitGapX",0,5),unitGapY:inputNum("unitGapY",0,20),stringGapX:inputNum("stringGapX",0,20),stringGapY:inputNum("stringGapY",0,20),azimuth:inputNum("azimuth",-180,180),eastOffset:inputNum("offsetEW",-20,20),northOffset:inputNum("offsetNS",-20,20),heightOffset:inputNum("offsetH",-5,5),planePitch:inputNum("planePitch",-10,10),planeRoll:inputNum("planeRoll",-10,10)};}
+  function setParamInputs(pp){paramIds.forEach(function(id,i){document.getElementById(id).value=pp[paramKeys[i]];});updateValidationUI(pp);}
+  function saveActiveScheme(){var sc=activeScheme();if(sc)sc.params=panelParams();}
+  function newRoof(name){var sc=activeScheme(),perString=sc?sc.params.stringRows*sc.params.stringCols:0;return {id:uid("roof"),name:name||("屋面 "+(roofs.length+1)),visible:true,schemeId:activeSchemeId,point:null,normal:null,polygon:[],stats:emptyStats(perString)};}
+  function escapeHtml(v){return String(v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function planeBasis(roof){
+    var n=norm(roof.normal);if(n[2]<0)n=mul(n,-1);var seed=Math.abs(dot(n,[1,0,0]))<.9?[1,0,0]:[0,1,0],u=norm(sub(seed,mul(n,dot(seed,n)))),v=norm(cross(n,u));return {u:u,v:v,n:n};
   }
+  function arraySpans(pp){
+    var tilt=pp.tilt*Math.PI/180,unitPitchX=pp.width+pp.unitGapX,unitPitchY=pp.length*Math.cos(tilt)+pp.unitGapY;
+    var stringGridRows=Math.ceil(pp.totalRows/pp.stringRows),stringGridCols=Math.ceil(pp.totalCols/pp.stringCols);
+    return {spanX:pp.width+(pp.totalCols-1)*unitPitchX+(stringGridCols-1)*pp.stringGapX,spanY:pp.length*Math.cos(tilt)+(pp.totalRows-1)*unitPitchY+(stringGridRows-1)*pp.stringGapY};
+  }
+  function adjustedPlane(roof,pp){
+    var b=planeBasis(roof),spans=arraySpans(pp),east0=b.u,north0=b.v,n0=b.n,azimuth=pp.azimuth*Math.PI/180;
+    var anchorEast=add(mul(east0,Math.cos(azimuth)),mul(north0,Math.sin(azimuth))),anchorNorth=add(mul(east0,-Math.sin(azimuth)),mul(north0,Math.cos(azimuth)));
+    var anchorCenter=add(roof.point,add(mul(anchorEast,spans.spanX/2),mul(anchorNorth,spans.spanY/2)));
+    var pitch=pp.planePitch*Math.PI/180,roll=pp.planeRoll*Math.PI/180,north1=norm(rotateAround(north0,east0,pitch)),normal1=norm(rotateAround(n0,east0,pitch));
+    var east2=norm(rotateAround(east0,north1,roll)),normal2=norm(rotateAround(normal1,north1,roll)),north2=norm(cross(normal2,east2));east2=norm(cross(north2,normal2));
+    var arrayEast=add(mul(east2,Math.cos(azimuth)),mul(north2,Math.sin(azimuth))),arrayNorth=add(mul(east2,-Math.sin(azimuth)),mul(north2,Math.cos(azimuth)));
+    return {center:add(anchorCenter,add(mul(east2,pp.eastOffset),add(mul(north2,pp.northOffset),mul(normal2,pp.heightOffset)))),east:east2,north:north2,normal:normal2,arrayEast:arrayEast,arrayNorth:arrayNorth,spanX:spans.spanX,spanY:spans.spanY};
+  }
+  function projectToRoof(roof,p){var b=planeBasis(roof),d=sub(p,roof.point);return add(roof.point,sub(d,mul(b.n,dot(d,b.n))));}
+  function planar(roof,p){var b=planeBasis(roof),d=sub(p,roof.point);return [dot(d,b.u),dot(d,b.v)];}
+  function onSegment(p,a,b){var vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1],l=vx*vx+vy*vy;if(l<1e-12)return Math.hypot(wx,wy)<.04;var t=Math.max(0,Math.min(1,(wx*vx+wy*vy)/l)),dx=p[0]-(a[0]+t*vx),dy=p[1]-(a[1]+t*vy);return dx*dx+dy*dy<.0016;}
+  function pointInRoof(roof,p){if(!roof.polygon||roof.polygon.length<3)return false;var q=planar(roof,p),poly=roof.polygon.map(function(x){return planar(roof,x);}),inside=false;for(var i=0,j=poly.length-1;i<poly.length;j=i++){if(onSegment(q,poly[j],poly[i]))return true;var yi=poly[i][1],yj=poly[j][1],hit=((yi>q[1])!==(yj>q[1]))&&(q[0]<(poly[j][0]-poly[i][0])*(q[1]-yi)/(yj-yi)+poly[i][0]);if(hit)inside=!inside;}return inside;}
   function pushOrientedBox(p,n,lines,center,ax,ay,az,sx,sy,sz){
-    var hx=mul(ax,sx/2),hy=mul(ay,sy/2),hz=mul(az,sz/2); var c=[];
-    [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].forEach(function(s){c.push(add(center,add(mul(hx,s[0]),add(mul(hy,s[1]),mul(hz,s[2])))));});
-    quad(p,n,c[4],c[5],c[6],c[7]);quad(p,n,c[1],c[0],c[3],c[2]);quad(p,n,c[0],c[4],c[7],c[3]);quad(p,n,c[5],c[1],c[2],c[6]);quad(p,n,c[3],c[7],c[6],c[2]);quad(p,n,c[0],c[1],c[5],c[4]);
-    var edges=[[4,5],[5,6],[6,7],[7,4],[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6],[3,7]];edges.forEach(function(e){lines.push.apply(lines,c[e[0]].concat(c[e[1]]));});
+    var hx=mul(ax,sx/2),hy=mul(ay,sy/2),hz=mul(az,sz/2),c=[];[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].forEach(function(s){c.push(add(center,add(mul(hx,s[0]),add(mul(hy,s[1]),mul(hz,s[2])))));});
+    quad(p,n,c[4],c[5],c[6],c[7]);quad(p,n,c[1],c[0],c[3],c[2]);quad(p,n,c[0],c[4],c[7],c[3]);quad(p,n,c[5],c[1],c[2],c[6]);quad(p,n,c[3],c[7],c[6],c[2]);quad(p,n,c[0],c[1],c[5],c[4]);[[4,5],[5,6],[6,7],[7,4],[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6],[3,7]].forEach(function(e){lines.push.apply(lines,c[e[0]].concat(c[e[1]]));});
   }
-  function generatePanels(report){
-    if(!selected){setStatus("请先点击“选屋顶面”，再在模型上选择一个三角面。",true);return;}
-    var pp=panelParams(),plane=adjustedPlane(pp),n=plane.normal,u=plane.east,v=plane.north;
-    var a=pp.azimuth*Math.PI/180,ur=add(mul(u,Math.cos(a)),mul(v,Math.sin(a))),vr=add(mul(u,-Math.sin(a)),mul(v,Math.cos(a)));
-    var tilt=pp.tilt*Math.PI/180,rowDir=norm(add(mul(vr,Math.cos(tilt)),mul(n,Math.sin(tilt)))),panelN=norm(cross(ur,rowDir)); if(dot(panelN,n)<0)panelN=mul(panelN,-1);
-    var pitchX=pp.width+pp.colGap,pitchY=pp.length*Math.cos(tilt)+pp.rowGap,p=[],nn=[],lines=[];
-    for(var r=0;r<pp.rows;r++)for(var c=0;c<pp.cols;c++){
-      var dx=(c-(pp.cols-1)/2)*pitchX,dy=(r-(pp.rows-1)/2)*pitchY; var center=add(plane.center,add(mul(ur,dx),add(mul(vr,dy),mul(n,.10+Math.sin(tilt)*pp.length/2))));
-      pushOrientedBox(p,nn,lines,center,ur,rowDir,panelN,pp.width,pp.length,.055);
+  function generateRoof(roof,buckets,incompleteBucket,lines,incompleteLines,roofIndex){
+    var sc=schemes.find(function(x){return x.id===roof.schemeId;}),pp=sc?sc.params:null,perString=pp?pp.stringRows*pp.stringCols:0;
+    roof.strings=[];
+    if(!roof.point||!roof.normal||!pp||roof.polygon.length<3){roof.stats=emptyStats(perString);return null;}
+    var plane=adjustedPlane(roof,pp),n=plane.normal,ur=plane.arrayEast,vr=plane.arrayNorth,tilt=pp.tilt*Math.PI/180,rowDir=norm(add(mul(vr,Math.cos(tilt)),mul(n,Math.sin(tilt)))),panelN=norm(cross(ur,rowDir));if(dot(panelN,n)<0)panelN=mul(panelN,-1);
+    var unitPitchX=pp.width+pp.unitGapX,unitPitchY=pp.length*Math.cos(tilt)+pp.unitGapY,stringGridRows=Math.ceil(pp.totalRows/pp.stringRows),stringGridCols=Math.ceil(pp.totalCols/pp.stringCols);
+    var arraySpanX=(pp.totalCols-1)*unitPitchX+(stringGridCols-1)*pp.stringGapX,arraySpanY=(pp.totalRows-1)*unitPitchY+(stringGridRows-1)*pp.stringGapY;
+    var count=0,completeStringCount=0,incompleteStringCount=0,incompletePanelCount=0;
+    for(var sr=0;sr<stringGridRows;sr++)for(var scx=0;scx<stringGridCols;scx++){
+      var startRow=sr*pp.stringRows,startCol=scx*pp.stringCols,actualRows=Math.min(pp.stringRows,pp.totalRows-startRow),actualCols=Math.min(pp.stringCols,pp.totalCols-startCol),layoutPanels=actualRows*actualCols,placed=[];
+      for(var rr=0;rr<actualRows;rr++)for(var cc=0;cc<actualCols;cc++){
+        var globalRow=startRow+rr,globalCol=startCol+cc,dx=globalCol*unitPitchX+scx*pp.stringGapX-arraySpanX/2,dy=globalRow*unitPitchY+sr*pp.stringGapY-arraySpanY/2,base=add(plane.center,add(mul(ur,dx),mul(vr,dy)));
+        if(!pointInRoof(roof,projectToRoof(roof,base)))continue;
+        placed.push(add(base,mul(n,.10+Math.sin(tilt)*pp.length/2)));
+      }
+      if(!placed.length)continue;
+      var reasons=[],incomplete=layoutPanels<perString||placed.length<layoutPanels;
+      if(layoutPanels<perString)reasons.push("remainder");
+      if(placed.length<layoutPanels)reasons.push("polygon-clipped");
+      if(incomplete){incompleteStringCount++;incompletePanelCount+=placed.length;}else completeStringCount++;
+      var paletteIndex=(roofIndex+sr*stringGridCols+scx)%buckets.length,bucket=incomplete?incompleteBucket:buckets[paletteIndex],lineTarget=incomplete?incompleteLines:lines;
+      if(roof.visible)placed.forEach(function(center){pushOrientedBox(bucket.p,bucket.n,lineTarget,center,ur,rowDir,panelN,pp.width,pp.length,.055);});
+      count+=placed.length;
+      roof.strings.push({id:roof.id+"-string-"+(sr+1)+"-"+(scx+1),groupRow:sr+1,groupCol:scx+1,rowRange:[startRow+1,startRow+actualRows],columnRange:[startCol+1,startCol+actualCols],expectedPanels:perString,layoutPanels:layoutPanels,placedPanels:placed.length,incomplete:incomplete,incompleteReasons:reasons});
     }
-    disposeMesh(panelMesh);disposeMesh(panelLines);panelMesh=makeMesh(new Float32Array(p),new Float32Array(nn));
-    var ln=new Float32Array(lines),lnn=new Float32Array(lines.length);for(var i=2;i<lnn.length;i+=3)lnn[i]=1;panelLines=makeMesh(ln,lnn,gl.LINES);
-    updateStats(pp.rows*pp.cols); if(report!==false)setStatus("已更新 "+(pp.rows*pp.cols)+" 块组件。",false);
+    var stringCount=completeStringCount+incompleteStringCount;
+    roof.stats={stringCount:stringCount,completeStringCount:completeStringCount,incompleteStringCount:incompleteStringCount,incompletePanelCount:incompletePanelCount,panelsPerString:perString,count:count,capacityKwp:count*pp.power/1000,moduleAreaM2:count*pp.length*pp.width};return null;
   }
-  function updateStats(count){var p=panelParams();document.getElementById("countStat").textContent=count.toLocaleString();document.getElementById("kwpStat").textContent=(count*p.power/1000).toFixed(2);document.getElementById("areaStat").textContent=(count*p.length*p.width).toFixed(1);}
-  function updatePlaneCard(label){
-    var card=document.getElementById("planeCard"),co=document.getElementById("planeCoords");
-    if(!selected){card.querySelector("strong").textContent="尚未选择";co.textContent="点击“选屋顶面”开始定位";return;}
-    var baseWorld=add(selected.point,modelCenter),plane=adjustedPlane(panelParams()),adjustedWorld=add(plane.center,modelCenter);
-    card.querySelector("strong").textContent=label||"已选模型三角面";
-    co.innerHTML="点选中心 ("+baseWorld.map(function(x){return x.toFixed(2);}).join(", ")+")<br>点选法向 ("+selected.normal.map(function(x){return x.toFixed(3);}).join(", ")+")<br>调整后中心 ("+adjustedWorld.map(function(x){return x.toFixed(2);}).join(", ")+")<br>调整后法向 ("+plane.normal.map(function(x){return x.toFixed(3);}).join(", ")+")";
+  function generateAll(report){
+    var buckets=stringPaletteLight.map(function(){return {p:[],n:[]};}),incompleteBucket={p:[],n:[]},lines=[],incompleteLines=[],errors=[];roofs.forEach(function(roof,index){var err=generateRoof(roof,buckets,incompleteBucket,lines,incompleteLines,index);if(err&&errors.indexOf(err)<0)errors.push(err);});panelMeshes.forEach(disposeMesh);disposeMesh(incompletePanelMesh);disposeMesh(panelLines);disposeMesh(incompletePanelLines);panelMeshes=buckets.map(function(bucket,index){if(!bucket.p.length)return null;var mesh=makeMesh(new Float32Array(bucket.p),new Float32Array(bucket.n));mesh.stringColor=index;return mesh;}).filter(Boolean);incompletePanelMesh=incompleteBucket.p.length?makeMesh(new Float32Array(incompleteBucket.p),new Float32Array(incompleteBucket.n)):null;var ln=new Float32Array(lines),lnn=new Float32Array(lines.length);for(var i=2;i<lnn.length;i+=3)lnn[i]=1;panelLines=lines.length?makeMesh(ln,lnn,gl.LINES):null;var iln=new Float32Array(incompleteLines),ilnn=new Float32Array(incompleteLines.length);for(var j=2;j<ilnn.length;j+=3)ilnn[j]=1;incompletePanelLines=incompleteLines.length?makeMesh(iln,ilnn,gl.LINES):null;updateStats();updateRoofOutline();updateMarker();updatePlaneCard();renderRoofList();if(report!==false){if(errors.length)setStatus(errors.join("；"),true);else setStatus("已按输入的总行列重新生成 "+roofs.length+" 个屋面的阵列。",false);}
   }
-  function updateMarker(){
-    disposeMesh(markerMesh);markerMesh=null;if(!selected)return;var plane=adjustedPlane(panelParams()),p=plane.center,n=plane.normal,u=plane.east,v=plane.north,s=Math.max(modelRadius*.018,.3),pts=[];
-    pts.push.apply(pts,add(p,mul(u,-s)).concat(add(p,mul(u,s)),add(p,mul(v,-s)),add(p,mul(v,s)),p,add(p,mul(n,s*1.8))));var ns=new Float32Array(pts.length);for(var i=2;i<ns.length;i+=3)ns[i]=1;markerMesh=makeMesh(new Float32Array(pts),ns,gl.LINES);
+  function updateStats(){
+    var sum=roofs.reduce(function(a,r){a.stringCount+=r.stats.stringCount||0;a.completeStringCount+=r.stats.completeStringCount||0;a.incompleteStringCount+=r.stats.incompleteStringCount||0;a.incompletePanelCount+=r.stats.incompletePanelCount||0;a.count+=r.stats.count;a.capacityKwp+=r.stats.capacityKwp;a.moduleAreaM2+=r.stats.moduleAreaM2;return a;},{stringCount:0,completeStringCount:0,incompleteStringCount:0,incompletePanelCount:0,count:0,capacityKwp:0,moduleAreaM2:0});
+    var sizes=[];roofs.forEach(function(r){var v=r.stats.panelsPerString;if(v&&sizes.indexOf(v)<0)sizes.push(v);});
+    document.getElementById("stringCountStat").textContent=sum.completeStringCount.toLocaleString();document.getElementById("panelsPerStringStat").textContent=sizes.length===1?sizes[0].toLocaleString():(sizes.length?"多规格":"—");document.getElementById("incompleteStringStat").textContent=sum.incompleteStringCount.toLocaleString()+" × "+sum.incompletePanelCount.toLocaleString();document.getElementById("countStat").textContent=sum.count.toLocaleString();document.getElementById("kwpStat").textContent=sum.capacityKwp.toFixed(2);document.getElementById("areaStat").textContent=sum.moduleAreaM2.toFixed(1);
+    document.getElementById("roofSummary").innerHTML=roofs.length?roofs.map(function(r){return '<div class="roof-summary-row"><span>'+escapeHtml(r.name)+'</span><b>完整串 '+(r.stats.completeStringCount||0)+' × '+(r.stats.panelsPerString||0)+' 块 · 不完整串 '+(r.stats.incompleteStringCount||0)+' × '+(r.stats.incompletePanelCount||0)+' 块 · 共 '+r.stats.count+' 块 · '+r.stats.capacityKwp.toFixed(2)+' kWp</b></div>';}).join(""):'<div class="empty">暂无屋面</div>';
+  }
+  function updatePlaneCard(){var roof=activeRoof(),card=document.getElementById("planeCard"),co=document.getElementById("planeCoords");if(!roof||!roof.point){card.querySelector("strong").textContent=roof?roof.name:"尚未新增屋面";co.textContent="请点选阵列起排的西南角位置";return;}var sc=schemes.find(function(x){return x.id===roof.schemeId;}),plane=adjustedPlane(roof,sc?sc.params:defaultParams),anchorWorld=add(roof.point,modelCenter),adjustedWorld=add(plane.center,modelCenter);card.querySelector("strong").textContent=roof.name;co.innerHTML="西南角锚点 ("+anchorWorld.map(function(x){return x.toFixed(2);}).join(", ")+")<br>点选法向 ("+roof.normal.map(function(x){return x.toFixed(3);}).join(", ")+")<br>调整后中心 ("+adjustedWorld.map(function(x){return x.toFixed(2);}).join(", ")+")<br>范围顶点 "+roof.polygon.length+" 个";}
+  function updateMarker(){disposeMesh(markerMesh);markerMesh=null;var roof=activeRoof();if(!roof||!roof.point)return;var basis=planeBasis(roof),p=roof.point,n=basis.n,u=basis.u,v=basis.v,s=Math.max(modelRadius*.018,.3),pts=[];pts.push.apply(pts,add(p,mul(u,-s)).concat(add(p,mul(u,s)),add(p,mul(v,-s)),add(p,mul(v,s)),p,add(p,mul(n,s*1.8))));var ns=new Float32Array(pts.length);for(var i=2;i<ns.length;i+=3)ns[i]=1;markerMesh=makeMesh(new Float32Array(pts),ns,gl.LINES);}
+  function updateRoofOutline(){disposeMesh(roofOutlineMesh);roofOutlineMesh=null;var pts=[];roofs.forEach(function(r){if(!r.visible||!r.polygon.length)return;for(var i=0;i<r.polygon.length-1;i++)pts.push.apply(pts,r.polygon[i].concat(r.polygon[i+1]));if(r.polygon.length>2)pts.push.apply(pts,r.polygon[r.polygon.length-1].concat(r.polygon[0]));});if(!pts.length)return;var ns=new Float32Array(pts.length);for(var j=2;j<ns.length;j+=3)ns[j]=1;roofOutlineMesh=makeMesh(new Float32Array(pts),ns,gl.LINES);}
+  function renderSchemeUI(){var select=document.getElementById("schemeSelect"),roofSelect=document.getElementById("roofSchemeSelect"),opts=schemes.map(function(sc){return '<option value="'+sc.id+'">'+escapeHtml(sc.name)+'</option>';}).join("");select.innerHTML=opts;select.value=activeSchemeId||"";roofSelect.innerHTML=opts;var ar=activeRoof();roofSelect.value=ar?ar.schemeId:"";var sc=activeScheme();document.getElementById("schemeName").value=sc?sc.name:"";if(sc)setParamInputs(sc.params);}
+  function renderRoofList(){var list=document.getElementById("roofList"),ar=activeRoof();list.innerHTML=roofs.length?roofs.map(function(r){return '<div class="manager-row"><div class="manager-top"><button data-roof="'+r.id+'" class="'+(r.id===activeRoofId?'active':'')+'">'+escapeHtml(r.name)+'</button><label class="visibility"><input type="checkbox" data-visible="'+r.id+'" '+(r.visible?'checked':'')+'>显示</label></div><div class="manager-meta">'+(r.point?'锚点已选':'待选锚点')+' · '+r.polygon.length+' 个范围点 · 完整串 '+(r.stats.completeStringCount||0)+' · 不完整串 '+(r.stats.incompleteStringCount||0)+' / '+(r.stats.incompletePanelCount||0)+' 块 · 共 '+r.stats.count+' 块</div></div>';}).join(""):'<div class="empty">暂无屋面，请新增。</div>';document.getElementById("roofEditor").style.display=ar?"block":"none";if(ar){document.getElementById("roofName").value=ar.name;document.getElementById("roofSchemeSelect").value=ar.schemeId;document.getElementById("polygonStatus").textContent=ar.polygon.length>=3?"范围已闭合（"+ar.polygon.length+" 个顶点）":(ar.polygon.length?"已取 "+ar.polygon.length+" 点，还需 "+(3-ar.polygon.length)+" 点":"尚未绘制范围");}Array.prototype.forEach.call(list.querySelectorAll("button[data-roof]"),function(btn){btn.onclick=function(){activeRoofId=btn.getAttribute("data-roof");renderAllUI();};});Array.prototype.forEach.call(list.querySelectorAll("input[data-visible]"),function(cb){cb.onchange=function(){var r=roofs.find(function(x){return x.id===cb.getAttribute("data-visible");});if(r){r.visible=cb.checked;generateAll(false);}};});}
+  function updateInteractionButtons(){var finish=document.getElementById("finishPolygonBtn"),roof=activeRoof(),drawing=interactionMode==="polygon";finish.disabled=!drawing||!roof||roof.polygon.length<3;finish.title=!drawing?"请先进入绘制范围模式":(!roof||roof.polygon.length<3?"至少绘制 3 个范围点":"闭合当前范围并退出绘制模式");}
+  function renderAllUI(){renderSchemeUI();renderRoofList();updateStats();updatePlaneCard();updateMarker();updateRoofOutline();updateInteractionButtons();}
+  function setInteraction(mode){interactionMode=interactionMode===mode?null:mode;pickMode=!!interactionMode;canvas.classList.toggle("pick",pickMode);document.getElementById("setBaseBtn").classList.toggle("active",interactionMode==="base");document.getElementById("drawPolygonBtn").classList.toggle("active",interactionMode==="polygon");updateInteractionButtons();setStatus(interactionMode==="base"?"请点击想要起排的西南角位置；阵列将向东、向北展开。":interactionMode==="polygon"?"逐点点击屋面边界；至少 3 点后点击“完成绘制”退出。":"已退出点选模式。",false);}
+  function updateNorthArrow(){
+    disposeMesh(northArrowMesh);northArrowMesh=null;if(!spatialReference||!spatialReference.northKnown)return;
+    var s=Math.max(modelRadius*.16,.8),z=modelSize[2]*.5+Math.max(modelRadius*.025,.08),base=[-modelSize[0]*.42,-modelSize[1]*.42,z],tip=add(base,[0,s,0]),pts=[];
+    function line(a,b){pts.push.apply(pts,a.concat(b));}
+    line(base,tip);line(tip,add(tip,[-s*.22,-s*.28,0]));line(tip,add(tip,[s*.22,-s*.28,0]));
+    var y0=tip[1]+s*.16,y1=y0+s*.34,x0=tip[0]-s*.16,x1=tip[0]+s*.16;
+    line([x0,y0,z],[x0,y1,z]);line([x0,y1,z],[x1,y0,z]);line([x1,y0,z],[x1,y1,z]);
+    var normals=new Float32Array(pts.length);for(var i=2;i<normals.length;i+=3)normals[i]=1;northArrowMesh=makeMesh(new Float32Array(pts),normals,gl.LINES);
   }
   function setStatus(msg,error){statusLine.textContent=msg;statusLine.classList.toggle("error",!!error);}
-
-  function rayTriangle(orig,dir,a,b,c){
-    var e1=sub(b,a),e2=sub(c,a),h=cross(dir,e2),det=dot(e1,h);if(Math.abs(det)<1e-8)return null;var inv=1/det,s=sub(orig,a),u=inv*dot(s,h);if(u<0||u>1)return null;var q=cross(s,e1),v=inv*dot(dir,q);if(v<0||u+v>1)return null;var t=inv*dot(e2,q);return t>1e-5?t:null;
-  }
-  function pickAt(clientX,clientY){
-    if(!modelPositions)return;var r=canvas.getBoundingClientRect(),x=((clientX-r.left)/r.width)*2-1,y=1-((clientY-r.top)/r.height)*2,inv=invert(lastVP);if(!inv)return;
-    var near=transform4(inv,[x,y,-1,1]),far=transform4(inv,[x,y,1,1]);near=[near[0]/near[3],near[1]/near[3],near[2]/near[3]];far=[far[0]/far[3],far[1]/far[3],far[2]/far[3]];var dir=norm(sub(far,near)),best=Infinity,bestP=null,bestN=null;
-    for(var i=0;i<modelPositions.length;i+=9){var a=[modelPositions[i],modelPositions[i+1],modelPositions[i+2]],b=[modelPositions[i+3],modelPositions[i+4],modelPositions[i+5]],c=[modelPositions[i+6],modelPositions[i+7],modelPositions[i+8]],t=rayTriangle(near,dir,a,b,c);if(t!==null&&t<best){best=t;bestP=add(near,mul(dir,t));bestN=norm(cross(sub(b,a),sub(c,a)));}}
-    if(bestP){if(bestN[2]<0)bestN=mul(bestN,-1);selected={point:add(bestP,mul(bestN,.03)),normal:bestN};updateMarker();updatePlaneCard();pickMode=false;pickBtn.classList.remove("active");canvas.classList.remove("pick");pickBtn.textContent="选屋顶面";generatePanels(false);setStatus("基准面已更新，阵列已移动到新位置。",false);hint.innerHTML="<strong>基准面已选</strong><span class='dot'>·</span>在右侧修改行列、倾角和间距。";}else setStatus("未命中模型，请换个位置重试。",true);
-  }
+  function rayTriangle(orig,dir,a,b,c){var e1=sub(b,a),e2=sub(c,a),h=cross(dir,e2),det=dot(e1,h);if(Math.abs(det)<1e-8)return null;var inv=1/det,s=sub(orig,a),u=inv*dot(s,h);if(u<0||u>1)return null;var q=cross(s,e1),v=inv*dot(dir,q);if(v<0||u+v>1)return null;var t=inv*dot(e2,q);return t>1e-5?t:null;}
+  function hitAt(clientX,clientY){if(!modelPositions)return null;var r=canvas.getBoundingClientRect(),x=((clientX-r.left)/r.width)*2-1,y=1-((clientY-r.top)/r.height)*2,inv=invert(lastVP);if(!inv)return null;var near=transform4(inv,[x,y,-1,1]),far=transform4(inv,[x,y,1,1]);near=[near[0]/near[3],near[1]/near[3],near[2]/near[3]];far=[far[0]/far[3],far[1]/far[3],far[2]/far[3]];var dir=norm(sub(far,near)),best=Infinity,out=null;for(var i=0;i<modelPositions.length;i+=9){var a=[modelPositions[i],modelPositions[i+1],modelPositions[i+2]],b=[modelPositions[i+3],modelPositions[i+4],modelPositions[i+5]],c=[modelPositions[i+6],modelPositions[i+7],modelPositions[i+8]],t=rayTriangle(near,dir,a,b,c);if(t!==null&&t<best){best=t;var normal=norm(cross(sub(b,a),sub(c,a)));if(normal[2]<0)normal=mul(normal,-1);out={point:add(near,mul(dir,t)),normal:normal};}}return out;}
+  function pickAt(clientX,clientY){var roof=activeRoof();if(!roof){setStatus("请先新增一个屋面。",true);return;}var hit=hitAt(clientX,clientY);if(!hit){setStatus("未命中模型，请换个位置重试。",true);return;}if(interactionMode==="base"){roof.point=add(hit.point,mul(hit.normal,.03));roof.normal=hit.normal;roof.polygon=[];setInteraction(null);setStatus("西南角锚点已设置；阵列将从此处向东、向北展开。下一步绘制屋面范围。",false);}else if(interactionMode==="polygon"){if(!roof.point){setStatus("请先点选西南角锚点。",true);return;}roof.polygon.push(projectToRoof(roof,add(hit.point,mul(roof.normal,.04))));setStatus("已添加第 "+roof.polygon.length+" 个范围顶点。",false);}generateAll(false);renderAllUI();}
 
   var pointer=null,moved=false,pointers={};
   canvas.addEventListener("pointerdown",function(e){canvas.setPointerCapture(e.pointerId);pointers[e.pointerId]=[e.clientX,e.clientY];if(Object.keys(pointers).length===1){pointer={x:e.clientX,y:e.clientY,yaw:camera.yaw,pitch:camera.pitch};moved=false;}});
-  canvas.addEventListener("pointermove",function(e){
-    if(!pointers[e.pointerId])return;pointers[e.pointerId]=[e.clientX,e.clientY];var ids=Object.keys(pointers);
-    if(ids.length===1&&pointer){var dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;if(Math.hypot(dx,dy)>4)moved=true;camera.yaw=pointer.yaw-dx*.007;camera.pitch=Math.max(-.1,Math.min(1.48,pointer.pitch+dy*.007));}
-  });
-  canvas.addEventListener("pointerup",function(e){if(pickMode&&!moved)pickAt(e.clientX,e.clientY);delete pointers[e.pointerId];pointer=null;});
-  canvas.addEventListener("pointercancel",function(e){delete pointers[e.pointerId];pointer=null;});
-  canvas.addEventListener("wheel",function(e){e.preventDefault();camera.distance=Math.max(modelRadius*.08,Math.min(modelRadius*12,camera.distance*Math.exp(e.deltaY*.001)));},{passive:false});
+  canvas.addEventListener("pointermove",function(e){if(!pointers[e.pointerId])return;pointers[e.pointerId]=[e.clientX,e.clientY];var ids=Object.keys(pointers);if(ids.length===1&&pointer){var dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;if(Math.hypot(dx,dy)>4)moved=true;if(!interactionMode||moved){camera.yaw=pointer.yaw-dx*.007;camera.pitch=Math.max(-.1,Math.min(1.48,pointer.pitch+dy*.007));}}});
+  canvas.addEventListener("pointerup",function(e){if(interactionMode&&!moved)pickAt(e.clientX,e.clientY);delete pointers[e.pointerId];pointer=null;});canvas.addEventListener("pointercancel",function(e){delete pointers[e.pointerId];pointer=null;});canvas.addEventListener("wheel",function(e){e.preventDefault();camera.distance=Math.max(modelRadius*.08,Math.min(modelRadius*12,camera.distance*Math.exp(e.deltaY*.001)));},{passive:false});
 
   document.getElementById("loadBtn").onclick=function(){document.getElementById("folderInput").click();};
-  document.getElementById("folderInput").onchange=function(e){loadModelFiles(e.target.files);e.target.value="";};
-  document.getElementById("demoBtn").onclick=loadDemo;
-  pickBtn.onclick=function(){pickMode=!pickMode;pickBtn.classList.toggle("active",pickMode);canvas.classList.toggle("pick",pickMode);pickBtn.textContent=pickMode?"请点击模型…":"选屋顶面";setStatus(pickMode?"选择模式已开启：请在目标屋顶上单击。":"已取消选择模式。",false);};
-  document.getElementById("generateBtn").onclick=function(){generatePanels(true);};
-  document.getElementById("clearBtn").onclick=function(){disposeMesh(panelMesh);disposeMesh(panelLines);panelMesh=null;panelLines=null;updateStats(0);setStatus("组件已清除，基准面仍保留。",false);};
-  document.getElementById("homeBtn").onclick=function(){camera={yaw:-.72,pitch:.72,distance:Math.max(modelRadius*1.75,5),target:[0,0,0]};};
-  document.getElementById("zoomIn").onclick=function(){camera.distance=Math.max(modelRadius*.08,camera.distance*.78);};
-  document.getElementById("zoomOut").onclick=function(){camera.distance=Math.min(modelRadius*12,camera.distance*1.28);};
-  document.getElementById("shotBtn").onclick=function(){
-    render();canvas.toBlob(function(blob){if(!blob){setStatus("图片导出失败。",true);return;}downloadBlob(blob,"pv-layout-"+new Date().toISOString().slice(0,10)+".png");setStatus("PNG 图片已下载。",false);},"image/png");
-  };
+  document.getElementById("folderInput").onchange=function(e){loadModelFiles(e.target.files);e.target.value="";};document.getElementById("demoBtn").onclick=loadDemo;
+  document.getElementById("setBaseBtn").onclick=function(){setInteraction("base");};document.getElementById("drawPolygonBtn").onclick=function(){var r=activeRoof();if(!r||!r.point){setStatus("请先点选当前屋面的西南角锚点。",true);return;}setInteraction("polygon");};
+  document.getElementById("finishPolygonBtn").onclick=function(){var r=activeRoof();if(interactionMode!=="polygon"||!r)return;if(r.polygon.length<3){setStatus("至少需要 3 个范围点才能完成绘制。",true);return;}var count=r.polygon.length;setInteraction(null);generateAll(false);setStatus("范围绘制完成（"+count+" 个顶点），已退出绘制模式。",false);};
+  document.getElementById("undoVertexBtn").onclick=function(){var r=activeRoof();if(r&&r.polygon.length){r.polygon.pop();generateAll(false);updateInteractionButtons();setStatus("已撤销最后一个范围顶点。",false);}};
+  document.getElementById("addRoofBtn").onclick=function(){var r=newRoof("屋面 "+(roofs.length+1));roofs.push(r);activeRoofId=r.id;renderAllUI();setInteraction("base");};
+  document.getElementById("deleteRoofBtn").onclick=function(){var r=activeRoof();if(!r)return;roofs=roofs.filter(function(x){return x.id!==r.id;});activeRoofId=roofs.length?roofs[0].id:null;generateAll(false);setStatus("屋面已删除。",false);};
+  document.getElementById("roofName").addEventListener("change",function(){var r=activeRoof();if(r){r.name=this.value.trim()||r.name;renderAllUI();}});
+  document.getElementById("roofSchemeSelect").onchange=function(){var r=activeRoof();if(r){r.schemeId=this.value;generateAll(false);setStatus("当前屋面已切换方案。",false);}};
+  document.getElementById("schemeSelect").onchange=function(){saveActiveScheme();activeSchemeId=this.value;var sc=activeScheme();if(sc)setParamInputs(sc.params);renderSchemeUI();};
+  document.getElementById("schemeName").addEventListener("change",function(){var sc=activeScheme();if(sc){sc.name=this.value.trim()||sc.name;renderAllUI();}});
+  document.getElementById("renameSchemeBtn").onclick=function(){var sc=activeScheme(),name=document.getElementById("schemeName").value.trim();if(sc&&name){sc.name=name;renderAllUI();setStatus("方案已重命名。",false);}};
+  document.getElementById("addSchemeBtn").onclick=function(){saveActiveScheme();var sc={id:uid("scheme"),name:"方案 "+(schemes.length+1),params:cloneParams(activeScheme()?activeScheme().params:defaultParams)};schemes.push(sc);activeSchemeId=sc.id;renderAllUI();setStatus("已新建方案，可直接编辑参数。",false);};
+  document.getElementById("deleteSchemeBtn").onclick=function(){if(schemes.length<=1){setStatus("至少保留一个排布方案。",true);return;}var doomed=activeSchemeId;schemes=schemes.filter(function(x){return x.id!==doomed;});activeSchemeId=schemes[0].id;roofs.forEach(function(r){if(r.schemeId===doomed)r.schemeId=activeSchemeId;});renderAllUI();generateAll(false);setStatus("方案已删除，关联屋面已切换到首个方案。",false);};
+  document.getElementById("generateBtn").onclick=function(){saveActiveScheme();var pp=activeScheme().params,validation=validateParams(pp);updateValidationUI(pp);if(!validation.valid){setStatus(validation.message+"。请调整后再生成。",true);return;}generateAll(true);};
+  paramIds.forEach(function(id){document.getElementById(id).addEventListener("change",function(){saveActiveScheme();var pp=activeScheme().params,validation=validateParams(pp);updateValidationUI(pp);if(!validation.valid){setStatus(validation.message+"。请调整后再生成。",true);return;}generateAll(false);setStatus("方案参数已更新，关联屋面已按组串单元重新生成。",false);});});
+  document.getElementById("resetPosition").onclick=function(){["offsetEW","offsetNS","offsetH"].forEach(function(id){document.getElementById(id).value="0";});saveActiveScheme();generateAll(false);setStatus("当前方案的位置偏移已归零。",false);};
+  document.getElementById("resetAngle").onclick=function(){["planePitch","planeRoll"].forEach(function(id){document.getElementById(id).value="0";});saveActiveScheme();generateAll(false);setStatus("当前方案的角度修正已归零。",false);};
+  document.getElementById("clearBtn").onclick=function(){roofs=[];activeRoofId=null;generateAll(false);renderAllUI();setStatus("全部屋面已清除；方案库仍保留。",false);};
+  document.getElementById("homeBtn").onclick=function(){camera={yaw:-.72,pitch:.72,distance:Math.max(modelRadius*1.75,5),target:[0,0,0]};};document.getElementById("zoomIn").onclick=function(){camera.distance=Math.max(modelRadius*.08,camera.distance*.78);};document.getElementById("zoomOut").onclick=function(){camera.distance=Math.min(modelRadius*12,camera.distance*1.28);};
+  document.getElementById("shotBtn").onclick=function(){render();canvas.toBlob(function(blob){if(!blob){setStatus("图片导出失败。",true);return;}downloadBlob(blob,"pv-layout-"+new Date().toISOString().slice(0,10)+".png");setStatus("PNG 图片已下载。",false);},"image/png");};
   function downloadBlob(blob,name){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},500);}
-  document.getElementById("jsonBtn").onclick=function(){
-    var data={version:1,model:{name:modelName,coordinateOffset:modelCenter,unit:"meter",upAxis:"Z"},selection:selected?{pointLocal:selected.point,pointOriginal:add(selected.point,modelCenter),normal:selected.normal}:null,array:panelParams(),summary:{count:Number(document.getElementById("countStat").textContent.replace(/,/g,"")),capacityKwp:Number(document.getElementById("kwpStat").textContent),moduleAreaM2:Number(document.getElementById("areaStat").textContent)}};
-    downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),"pv-layout-params.json");setStatus("排布参数 JSON 已下载。",false);
-  };
-
-  ["panelL","panelW","power","tilt","rows","cols","rowGap","colGap","azimuth"].forEach(function(id){document.getElementById(id).addEventListener("change",function(){if(panelMesh)generatePanels(false);});});
-  function refreshAdjustment(message){
-    if(panelMesh)generatePanels(false);
-    updateMarker(); updatePlaneCard();
-    if(message)setStatus(message,false);
-  }
-  ["offsetEW","offsetNS","offsetH","planePitch","planeRoll"].forEach(function(id){document.getElementById(id).addEventListener("input",function(){refreshAdjustment("阵列位置与基准角度已更新。");});});
-  document.getElementById("resetPosition").onclick=function(){["offsetEW","offsetNS","offsetH"].forEach(function(id){document.getElementById(id).value="0";});refreshAdjustment("位置偏移已归零。");};
-  document.getElementById("resetAngle").onclick=function(){["planePitch","planeRoll"].forEach(function(id){document.getElementById(id).value="0";});refreshAdjustment("平面角度修正已归零。");};
+  function exportedScheme(s){var related=roofs.filter(function(r){return r.schemeId===s.id;}),stats=related.reduce(function(a,r){a.stringCount+=r.stats.stringCount||0;a.completeStringCount+=r.stats.completeStringCount||0;a.incompleteStringCount+=r.stats.incompleteStringCount||0;a.incompletePanelCount+=r.stats.incompletePanelCount||0;return a;},{stringCount:0,completeStringCount:0,incompleteStringCount:0,incompletePanelCount:0});stats.panelsPerString=s.params.stringRows*s.params.stringCols;return {id:s.id,name:s.name,params:s.params,stats:stats};}
+  function exportSchemes(){saveActiveScheme();var data={version:4,type:"pv-layout-scheme-library",unit:"meter",upAxis:"Z",schemes:schemes.map(exportedScheme)};downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),"pv-layout-schemes.json");setStatus("方案库 JSON 已下载。",false);}
+  document.getElementById("exportSchemesBtn").onclick=exportSchemes;document.getElementById("importSchemesBtn").onclick=function(){document.getElementById("schemeFileInput").click();};
+  document.getElementById("schemeFileInput").onchange=function(e){var file=e.target.files[0];e.target.value="";if(!file)return;readText(file).then(function(text){var data=JSON.parse(text),items=Array.isArray(data.schemes)?data.schemes:[];if(!items.length)throw new Error("JSON 中没有 schemes 数组");var imported=items.filter(function(x){return x&&x.name&&x.params;}).map(function(x){return {id:uid("scheme"),name:String(x.name),params:cloneParams(x.params)};});if(!imported.length)throw new Error("没有可用方案");schemes=schemes.concat(imported);activeSchemeId=imported[0].id;renderAllUI();setStatus("已导入 "+imported.length+" 个方案。",false);}).catch(function(err){setStatus("方案导入失败："+err.message,true);});};
+  document.getElementById("jsonBtn").onclick=function(){saveActiveScheme();var totals=roofs.reduce(function(a,r){a.stringCount+=r.stats.stringCount||0;a.completeStringCount+=r.stats.completeStringCount||0;a.incompleteStringCount+=r.stats.incompleteStringCount||0;a.incompletePanelCount+=r.stats.incompletePanelCount||0;a.count+=r.stats.count;a.capacityKwp+=r.stats.capacityKwp;a.moduleAreaM2+=r.stats.moduleAreaM2;return a;},{stringCount:0,completeStringCount:0,incompleteStringCount:0,incompletePanelCount:0,count:0,capacityKwp:0,moduleAreaM2:0});var data={version:4,type:"pv-layout-project",unit:"meter",upAxis:"Z",SRS:spatialReference?spatialReference.srs:null,SRSOrigin:spatialReference?spatialReference.origin:null,model:{name:modelName,coordinateOffset:modelCenter,unit:"meter",upAxis:"Z",SRS:spatialReference?spatialReference.srs:null,SRSOrigin:spatialReference?spatialReference.origin:null,axisConvention:spatialReference?spatialReference.axisConvention:null,metadataSource:spatialReference?spatialReference.source:null},schemes:schemes.map(exportedScheme),roofs:roofs.map(function(r){return {id:r.id,name:r.name,visible:r.visible,schemeId:r.schemeId,basePlane:r.point?{pointLocal:r.point,pointOriginal:add(r.point,modelCenter),normal:r.normal}:null,polygonLocal:r.polygon,polygonOriginal:r.polygon.map(function(p){return add(p,modelCenter);}),strings:r.strings||[],stats:r.stats};}),summary:totals};downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),"pv-layout-project.json");setStatus("项目 JSON 已下载。",false);};
   function collectEntry(entry,prefix,out){
     return new Promise(function(resolve){
       if(entry.isFile){entry.file(function(file){file._relativePath=normalizePath(prefix+file.name);out.push(file);resolve();},resolve);return;}
