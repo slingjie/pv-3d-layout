@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>PV 三维排布可视化</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #e9edf0;
+      --panel: #f7f8f8;
+      --panel-2: #ffffff;
+      --ink: #182025;
+      --muted: #5d6a72;
+      --line: #ccd4d8;
+      --accent: #087a65;
+      --accent-strong: #05614f;
+      --accent-soft: #d9eee8;
+      --warn: #a35516;
+      --canvas: #d9e1e4;
+      --shadow: 0 14px 38px rgba(22, 36, 42, .13);
+      --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111719;
+        --panel: #192124;
+        --panel-2: #202a2d;
+        --ink: #eef4f3;
+        --muted: #a8b7bb;
+        --line: #344247;
+        --accent: #55caae;
+        --accent-strong: #82dfc9;
+        --accent-soft: #183a33;
+        --warn: #f1a963;
+        --canvas: #111a1d;
+        --shadow: 0 16px 44px rgba(0, 0, 0, .28);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: ui-sans-serif, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 348px;
+      height: 100dvh;
+      min-height: 620px;
+      gap: 0;
+    }
+    .stage {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background: var(--canvas);
+      isolation: isolate;
+    }
+    #glCanvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+    #glCanvas:active { cursor: grabbing; }
+    #glCanvas.pick { cursor: crosshair; }
+    .toolbar {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 16px;
+      z-index: 3;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toolbar > * { pointer-events: auto; }
+    .tool-btn, .icon-btn {
+      border: 1px solid color-mix(in srgb, var(--line), transparent 10%);
+      background: color-mix(in srgb, var(--panel-2), transparent 5%);
+      box-shadow: 0 4px 18px rgba(17, 29, 34, .11);
+      border-radius: 9px;
+      padding: 9px 12px;
+      min-height: 38px;
+      cursor: pointer;
+      font-weight: 650;
+    }
+    .tool-btn:hover, .icon-btn:hover { border-color: var(--accent); }
+    .tool-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tool-btn.active { background: var(--warn); color: #fff; border-color: var(--warn); }
+    .tool-btn:focus-visible, .icon-btn:focus-visible, input:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--accent), transparent 62%);
+      outline-offset: 2px;
+    }
+    .file-status {
+      margin-left: auto;
+      padding: 8px 11px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel-2), transparent 6%);
+      color: var(--muted);
+      box-shadow: 0 4px 18px rgba(17, 29, 34, .09);
+      max-width: 230px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hint {
+      position: absolute;
+      z-index: 2;
+      left: 16px;
+      bottom: 16px;
+      width: min(440px, calc(100% - 92px));
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--panel-2), transparent 4%);
+      border: 1px solid color-mix(in srgb, var(--line), transparent 15%);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+    }
+    .hint strong { color: var(--ink); }
+    .hint .dot { color: var(--accent); padding: 0 6px; }
+    .zoom-tools {
+      position: absolute;
+      z-index: 3;
+      right: 16px;
+      bottom: 16px;
+      display: grid;
+      gap: 7px;
+    }
+    .icon-btn { width: 42px; height: 42px; padding: 0; font-size: 20px; }
+    .drop-mask {
+      position: absolute;
+      inset: 14px;
+      z-index: 5;
+      display: none;
+      place-items: center;
+      border: 2px dashed var(--accent);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--accent-soft), transparent 10%);
+      color: var(--accent-strong);
+      font-size: 18px;
+      font-weight: 750;
+      pointer-events: none;
+    }
+    .stage.dragging .drop-mask { display: grid; }
+    .loading {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      display: none;
+      place-items: center;
+      background: color-mix(in srgb, var(--canvas), transparent 8%);
+    }
+    .loading.show { display: grid; }
+    .loading-card {
+      width: min(330px, calc(100% - 40px));
+      padding: 20px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+    .loading-card strong { display: block; margin-bottom: 9px; }
+    .bar { height: 5px; overflow: hidden; background: var(--line); border-radius: 99px; }
+    .bar::after { content: ""; display: block; width: 40%; height: 100%; background: var(--accent); animation: load 1s ease-in-out infinite alternate; }
+    @keyframes load { to { transform: translateX(150%); } }
+
+    aside {
+      min-width: 0;
+      height: 100%;
+      overflow: auto;
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      padding: 20px;
+      scrollbar-width: thin;
+    }
+    .section { padding: 0 0 19px; margin: 0 0 19px; border-bottom: 1px solid var(--line); }
+    .section:last-child { border-bottom: 0; margin-bottom: 0; }
+    h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.01em; }
+    .sub { margin: 0 0 15px; color: var(--muted); font-size: 12.5px; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 10px; }
+    .adjust-group { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+    .group-head h3 { margin: 0 0 2px; font-size: 14px; }
+    .group-head p { margin: 0; color: var(--muted); font-size: 11.5px; }
+    .reset-btn { flex: none; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); padding: 5px 9px; color: var(--muted); cursor: pointer; font-size: 11.5px; }
+    .reset-btn:hover { border-color: var(--accent); color: var(--accent-strong); }
+    label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+    .input-wrap { position: relative; }
+    input[type="number"] {
+      width: 100%;
+      height: 39px;
+      padding: 8px 38px 8px 10px;
+      background: var(--panel-2);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+    input[type="number"]:hover { border-color: color-mix(in srgb, var(--accent), var(--line) 45%); }
+    .unit { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 11px; pointer-events: none; }
+    .wide { grid-column: 1 / -1; }
+    .generate {
+      width: 100%;
+      margin-top: 14px;
+      min-height: 44px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .generate:hover { background: var(--accent-strong); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .stat { padding: 11px 8px 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; }
+    .stat b { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; line-height: 1.15; letter-spacing: -.04em; }
+    .stat span { color: var(--muted); font-size: 11px; }
+    .plane {
+      padding: 12px;
+      background: var(--accent-soft);
+      border-radius: 9px;
+      color: var(--accent-strong);
+    }
+    .plane strong { display: block; margin-bottom: 4px; }
+    .coords { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; overflow-wrap: anywhere; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .secondary {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 650;
+    }
+    .secondary:hover { border-color: var(--accent); }
+    .secondary.danger { color: #ae3d34; }
+    .note { margin: 11px 0 0; color: var(--muted); font-size: 11.5px; }
+    .status-line { margin-top: 10px; color: var(--muted); font-size: 12px; min-height: 18px; }
+    .status-line.error { color: #b53d32; }
+
+    @media (max-width: 760px) {
+      body { overflow: auto; }
+      .app { display: block; height: auto; min-height: 100dvh; }
+      .stage { height: 56dvh; min-height: 390px; }
+      aside { height: auto; overflow: visible; border-left: 0; border-top: 1px solid var(--line); padding: 17px 16px max(24px, env(safe-area-inset-bottom)); }
+      .toolbar { left: 10px; right: 10px; top: 10px; gap: 6px; }
+      .tool-btn { padding: 8px 10px; min-height: 36px; font-size: 12px; }
+      .file-status { order: 5; width: 100%; margin-left: 0; max-width: none; font-size: 11px; background: color-mix(in srgb, var(--panel-2), transparent 15%); }
+      .hint { left: 10px; bottom: 10px; width: calc(100% - 72px); font-size: 11.5px; padding: 9px 10px; }
+      .zoom-tools { right: 10px; bottom: 10px; }
+      .icon-btn { width: 38px; height: 38px; }
+    }
+    @media (max-width: 410px) {
+      .fields { grid-template-columns: 1fr 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .stat { display: flex; align-items: baseline; justify-content: space-between; }
+    }
+    @media (prefers-reduced-motion: reduce) { .bar::after { animation: none; width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="stage" id="stage" aria-label="三维模型视图">
+      <canvas id="glCanvas"></canvas>
+      <div class="toolbar">
+        <button class="tool-btn primary" id="loadBtn">载入模型文件夹</button>
+        <button class="tool-btn" id="demoBtn">演示模型</button>
+        <button class="tool-btn" id="pickBtn">选屋顶面</button>
+        <button class="tool-btn" id="shotBtn">导出图片</button>
+        <span class="file-status" id="fileStatus">演示场景 · 1 单位 = 1 米</span>
+      </div>
+      <div class="hint" id="hint"><strong>已载入演示模型</strong><span class="dot">·</span>拖动旋转，滚轮缩放；点“选屋顶面”后在模型上单击。</div>
+      <div class="zoom-tools" aria-label="视图缩放">
+        <button class="icon-btn" id="zoomIn" aria-label="放大">＋</button>
+        <button class="icon-btn" id="zoomOut" aria-label="缩小">−</button>
+        <button class="icon-btn" id="homeBtn" aria-label="重置视图">⌂</button>
+      </div>
+      <div class="drop-mask">松开以载入 OBJ、MTL 与贴图</div>
+      <div class="loading" id="loading"><div class="loading-card"><strong id="loadingText">正在解析模型…</strong><div class="bar"></div></div></div>
+      <input id="folderInput" type="file" webkitdirectory directory multiple hidden />
+    </section>
+
+    <aside>
+      <section class="section">
+        <h2>排布参数</h2>
+        <p class="sub">先选基准面，再按行列生成组件阵列。</p>
+        <div class="fields">
+          <label>组件长度<div class="input-wrap"><input id="panelL" type="number" min="0.1" step="0.001" value="2.382"><span class="unit">m</span></div></label>
+          <label>组件宽度<div class="input-wrap"><input id="panelW" type="number" min="0.1" step="0.001" value="1.134"><span class="unit">m</span></div></label>
+          <label>单块功率<div class="input-wrap"><input id="power" type="number" min="1" step="1" value="620"><span class="unit">Wp</span></div></label>
+          <label>倾角<div class="input-wrap"><input id="tilt" type="number" min="0" max="60" step="1" value="5"><span class="unit">°</span></div></label>
+          <label>行数<div class="input-wrap"><input id="rows" type="number" min="1" max="50" step="1" value="4"><span class="unit">行</span></div></label>
+          <label>列数<div class="input-wrap"><input id="cols" type="number" min="1" max="50" step="1" value="8"><span class="unit">列</span></div></label>
+          <label>行间净距<div class="input-wrap"><input id="rowGap" type="number" min="0" max="20" step="0.1" value="0.6"><span class="unit">m</span></div></label>
+          <label>列间净距<div class="input-wrap"><input id="colGap" type="number" min="0" max="5" step="0.01" value="0.03"><span class="unit">m</span></div></label>
+          <label class="wide">阵列旋转<div class="input-wrap"><input id="azimuth" type="number" min="-180" max="180" step="1" value="0"><span class="unit">°</span></div></label>
+        </div>
+
+        <div class="adjust-group">
+          <div class="group-head">
+            <div><h3>阵列位置微调</h3><p>沿当前阵列平面移动；约定 OBJ +X 为东、+Y 为北。</p></div>
+            <button class="reset-btn" id="resetPosition" type="button">位置归零</button>
+          </div>
+          <div class="fields">
+            <label>东西偏移（+东）<div class="input-wrap"><input id="offsetEW" type="number" min="-20" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
+            <label>南北偏移（+北）<div class="input-wrap"><input id="offsetNS" type="number" min="-20" max="20" step="0.1" value="0"><span class="unit">m</span></div></label>
+            <label class="wide">高度偏移（沿法向）<div class="input-wrap"><input id="offsetH" type="number" min="-5" max="5" step="0.05" value="0"><span class="unit">m</span></div></label>
+          </div>
+        </div>
+
+        <div class="adjust-group">
+          <div class="group-head">
+            <div><h3>阵列平面角度</h3><p>修正点选三角面法向的误差，不替代组件倾角。</p></div>
+            <button class="reset-btn" id="resetAngle" type="button">角度归零</button>
+          </div>
+          <div class="fields">
+            <label>俯仰修正<div class="input-wrap"><input id="planePitch" type="number" min="-10" max="10" step="0.5" value="0"><span class="unit">°</span></div></label>
+            <label>横滚修正<div class="input-wrap"><input id="planeRoll" type="number" min="-10" max="10" step="0.5" value="0"><span class="unit">°</span></div></label>
+          </div>
+        </div>
+
+        <button class="generate" id="generateBtn">生成 / 更新阵列</button>
+        <div class="status-line" id="statusLine">阵列已生成，可直接调整参数。</div>
+      </section>
+
+      <section class="section">
+        <h2>结果速览</h2>
+        <p class="sub">用于方案预览，不替代施工图校核。</p>
+        <div class="stats">
+          <div class="stat"><b id="countStat">32</b><span>组件块数</span></div>
+          <div class="stat"><b id="kwpStat">19.84</b><span>装机容量 kWp</span></div>
+          <div class="stat"><b id="areaStat">86.4</b><span>组件总表面积 m²</span></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>当前基准面</h2>
+        <p class="sub">对照点选基准与位置、角度调整后的阵列平面。</p>
+        <div class="plane" id="planeCard">
+          <strong>演示屋顶 · 水平面</strong>
+          <div class="coords" id="planeCoords">中心 (0.00, 0.00, 4.20)<br>法向 (0.000, 0.000, 1.000)</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>本次数据</h2>
+        <div class="actions">
+          <button class="secondary" id="jsonBtn">下载参数 JSON</button>
+          <button class="secondary danger" id="clearBtn">清除组件</button>
+        </div>
+        <p class="note">选择包含 OBJ、MTL 和 JPG/PNG 贴图的完整文件夹；模型与参数只在当前页面内存中处理。当前按 OBJ 的 Z 轴为“上”、1 单位为 1 米。</p>
+      </section>
+    </aside>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var canvas = document.getElementById("glCanvas");
+  var gl = canvas.getContext("webgl2", { antialias: true, preserveDrawingBuffer: true });
+  var stage = document.getElementById("stage");
+  var loading = document.getElementById("loading");
+  var loadingText = document.getElementById("loadingText");
+  var fileStatus = document.getElementById("fileStatus");
+  var hint = document.getElementById("hint");
+  var statusLine = document.getElementById("statusLine");
+  var pickBtn = document.getElementById("pickBtn");
+
+  if (!gl) {
+    stage.innerHTML = '<div style="padding:32px;max-width:560px"><h2>当前浏览器无法启动 WebGL 2</h2><p>请改用最新版 Chrome、Edge 或 Safari 后重试。</p></div>';
+    return;
+  }
+
+  function shader(type, source) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, source);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function program(vs, fs) {
+    var p = gl.createProgram();
+    gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
+    gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  }
+
+  var prog = program(
+    '#version 300 es\nin vec3 a_position;in vec3 a_normal;in vec2 a_uv;uniform mat4 u_vp;out vec3 v_n;out vec3 v_p;out vec2 v_uv;void main(){v_n=a_normal;v_p=a_position;v_uv=a_uv;gl_Position=u_vp*vec4(a_position,1.0);}',
+    '#version 300 es\nprecision highp float;in vec3 v_n;in vec3 v_p;in vec2 v_uv;uniform vec4 u_color;uniform vec3 u_light;uniform float u_flat;uniform float u_useTexture;uniform sampler2D u_texture;out vec4 outColor;void main(){float d=max(dot(normalize(v_n),normalize(u_light)),0.0);float shade=mix(1.0,0.48+0.52*d,u_flat);vec4 base=mix(u_color,texture(u_texture,v_uv),u_useTexture);float fog=clamp((length(v_p)*0.001),0.0,0.12);outColor=vec4(mix(base.rgb*shade,base.rgb,fog),base.a);}'
+  );
+  var loc = {
+    pos: gl.getAttribLocation(prog, "a_position"),
+    norm: gl.getAttribLocation(prog, "a_normal"),
+    uv: gl.getAttribLocation(prog, "a_uv"),
+    vp: gl.getUniformLocation(prog, "u_vp"),
+    color: gl.getUniformLocation(prog, "u_color"),
+    light: gl.getUniformLocation(prog, "u_light"),
+    flat: gl.getUniformLocation(prog, "u_flat"),
+    useTexture: gl.getUniformLocation(prog, "u_useTexture"),
+    texture: gl.getUniformLocation(prog, "u_texture")
+  };
+
+  function v3(x, y, z) { return [x, y, z]; }
+  function add(a,b){ return [a[0]+b[0],a[1]+b[1],a[2]+b[2]]; }
+  function sub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  function mul(a,s){ return [a[0]*s,a[1]*s,a[2]*s]; }
+  function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+  function cross(a,b){ return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]; }
+  function len(a){ return Math.hypot(a[0],a[1],a[2]); }
+  function norm(a){ var l=len(a)||1; return [a[0]/l,a[1]/l,a[2]/l]; }
+  function rotateAround(a,axis,angle){
+    var k=norm(axis),c=Math.cos(angle),s=Math.sin(angle);
+    return add(add(mul(a,c),mul(cross(k,a),s)),mul(k,dot(k,a)*(1-c)));
+  }
+
+  function perspective(fovy, aspect, near, far) {
+    var f=1/Math.tan(fovy/2), nf=1/(near-far);
+    return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0];
+  }
+  function lookAt(eye, center, up) {
+    var z=norm(sub(eye,center)), x=norm(cross(up,z)), y=cross(z,x);
+    return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,eye),-dot(y,eye),-dot(z,eye),1];
+  }
+  function matMul(a,b) {
+    var o=new Array(16);
+    for(var c=0;c<4;c++) for(var r=0;r<4;r++) o[c*4+r]=a[0*4+r]*b[c*4+0]+a[1*4+r]*b[c*4+1]+a[2*4+r]*b[c*4+2]+a[3*4+r]*b[c*4+3];
+    return o;
+  }
+  function invert(a) {
+    var out=new Array(16), a00=a[0],a01=a[1],a02=a[2],a03=a[3],a10=a[4],a11=a[5],a12=a[6],a13=a[7],a20=a[8],a21=a[9],a22=a[10],a23=a[11],a30=a[12],a31=a[13],a32=a[14],a33=a[15];
+    var b00=a00*a11-a01*a10,b01=a00*a12-a02*a10,b02=a00*a13-a03*a10,b03=a01*a12-a02*a11,b04=a01*a13-a03*a11,b05=a02*a13-a03*a12,b06=a20*a31-a21*a30,b07=a20*a32-a22*a30,b08=a20*a33-a23*a30,b09=a21*a32-a22*a31,b10=a21*a33-a23*a31,b11=a22*a33-a23*a32;
+    var det=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06; if(!det)return null; det=1/det;
+    out[0]=(a11*b11-a12*b10+a13*b09)*det;out[1]=(a02*b10-a01*b11-a03*b09)*det;out[2]=(a31*b05-a32*b04+a33*b03)*det;out[3]=(a22*b04-a21*b05-a23*b03)*det;
+    out[4]=(a12*b08-a10*b11-a13*b07)*det;out[5]=(a00*b11-a02*b08+a03*b07)*det;out[6]=(a32*b02-a30*b05-a33*b01)*det;out[7]=(a20*b05-a22*b02+a23*b01)*det;
+    out[8]=(a10*b10-a11*b08+a13*b06)*det;out[9]=(a01*b08-a00*b10-a03*b06)*det;out[10]=(a30*b04-a31*b02+a33*b00)*det;out[11]=(a21*b02-a20*b04-a23*b00)*det;
+    out[12]=(a11*b07-a10*b09-a12*b06)*det;out[13]=(a00*b09-a01*b07+a02*b06)*det;out[14]=(a31*b01-a30*b03-a32*b00)*det;out[15]=(a20*b03-a21*b01+a22*b00)*det;
+    return out;
+  }
+  function transform4(m,p){ var x=p[0],y=p[1],z=p[2],w=p[3]; return [m[0]*x+m[4]*y+m[8]*z+m[12]*w,m[1]*x+m[5]*y+m[9]*z+m[13]*w,m[2]*x+m[6]*y+m[10]*z+m[14]*w,m[3]*x+m[7]*y+m[11]*z+m[15]*w]; }
+
+  function makeMesh(positions, normals, mode, uvs) {
+    var vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+    var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,positions,gl.STATIC_DRAW); gl.enableVertexAttribArray(loc.pos); gl.vertexAttribPointer(loc.pos,3,gl.FLOAT,false,0,0);
+    var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,normals,gl.STATIC_DRAW); gl.enableVertexAttribArray(loc.norm); gl.vertexAttribPointer(loc.norm,3,gl.FLOAT,false,0,0);
+    var tb=gl.createBuffer(),uvData=uvs||new Float32Array((positions.length/3)*2); gl.bindBuffer(gl.ARRAY_BUFFER,tb); gl.bufferData(gl.ARRAY_BUFFER,uvData,gl.STATIC_DRAW); gl.enableVertexAttribArray(loc.uv); gl.vertexAttribPointer(loc.uv,2,gl.FLOAT,false,0,0);
+    gl.bindVertexArray(null);
+    return {vao:vao,pb:pb,nb:nb,tb:tb,count:positions.length/3,mode:mode||gl.TRIANGLES,texture:null,color:null};
+  }
+  function disposeMesh(m){ if(!m)return; gl.deleteVertexArray(m.vao); gl.deleteBuffer(m.pb); gl.deleteBuffer(m.nb); gl.deleteBuffer(m.tb); if(m.texture)gl.deleteTexture(m.texture); }
+  function disposeModelMeshes(){modelMeshes.forEach(disposeMesh);modelMeshes=[];}
+
+  var modelMeshes=[], modelPositions=null, panelMesh=null, panelLines=null, markerMesh=null;
+  var modelCenter=[0,0,0], modelName="演示场景", modelRadius=24;
+  var selected={ point:[0,0,4.2], normal:[0,0,1] };
+  var pickMode=false;
+  var camera={yaw:-0.72,pitch:0.72,distance:44,target:[0,0,2.8]};
+  var lastVP=null, lastEye=null;
+
+  function cssColor(name, fallback){ var c=getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return c||fallback; }
+  function hexRgb(s){
+    if(s[0]==="#") { if(s.length===4)s="#"+s[1]+s[1]+s[2]+s[2]+s[3]+s[3]; return [parseInt(s.slice(1,3),16)/255,parseInt(s.slice(3,5),16)/255,parseInt(s.slice(5,7),16)/255]; }
+    return [0.12,0.16,0.18];
+  }
+  function cameraEye(){ var cp=Math.cos(camera.pitch); return add(camera.target,[camera.distance*cp*Math.cos(camera.yaw),camera.distance*cp*Math.sin(camera.yaw),camera.distance*Math.sin(camera.pitch)]); }
+  function updateVP(){
+    var eye=cameraEye(); var aspect=Math.max(1,canvas.clientWidth)/Math.max(1,canvas.clientHeight); var near=Math.max(.02,camera.distance/1000), far=Math.max(1000,modelRadius*30);
+    var p=perspective(Math.PI/4,aspect,near,far); var v=lookAt(eye,camera.target,[0,0,1]); lastVP=matMul(p,v); lastEye=eye;
+  }
+  function drawMesh(m,color,flat){
+    if(!m)return; gl.bindVertexArray(m.vao); gl.uniform4fv(loc.color,m.color||color); gl.uniform1f(loc.flat,flat);
+    if(m.texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,m.texture);gl.uniform1i(loc.texture,0);gl.uniform1f(loc.useTexture,1);}else gl.uniform1f(loc.useTexture,0);
+    gl.drawArrays(m.mode,0,m.count);
+  }
+  function render(){
+    resizeCanvas(); updateVP();
+    var bg=hexRgb(cssColor("--canvas","#d9e1e4")); gl.viewport(0,0,canvas.width,canvas.height); gl.clearColor(bg[0],bg[1],bg[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.useProgram(prog); gl.uniformMatrix4fv(loc.vp,false,lastVP); gl.uniform3fv(loc.light,[-.35,-.45,.82]);
+    var dark=matchMedia("(prefers-color-scheme: dark)").matches;
+    modelMeshes.forEach(function(m){drawMesh(m,dark?[.38,.45,.47,1]:[.53,.59,.61,1],1);});
+    drawMesh(panelMesh,dark?[.035,.22,.28,1]:[.025,.19,.27,1],1);
+    gl.disable(gl.CULL_FACE); drawMesh(panelLines,dark?[.40,.88,.78,1]:[.42,.88,.80,1],0); drawMesh(markerMesh,dark?[1,.67,.26,1]:[.90,.42,.10,1],0);
+    requestAnimationFrame(render);
+  }
+  function resizeCanvas(){ var dpr=Math.min(2,window.devicePixelRatio||1),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+
+  function tri(outP,outN,a,b,c){ var n=norm(cross(sub(b,a),sub(c,a))); outP.push.apply(outP,a.concat(b,c)); for(var i=0;i<3;i++)outN.push.apply(outN,n); }
+  function quad(outP,outN,a,b,c,d){ tri(outP,outN,a,b,c); tri(outP,outN,a,c,d); }
+  function box(outP,outN,center,size){
+    var x=size[0]/2,y=size[1]/2,z=size[2]/2,c=center;
+    var p=[[-x,-y,-z],[x,-y,-z],[x,y,-z],[-x,y,-z],[-x,-y,z],[x,-y,z],[x,y,z],[-x,y,z]].map(function(q){return add(c,q);});
+    quad(outP,outN,p[4],p[5],p[6],p[7]); quad(outP,outN,p[1],p[0],p[3],p[2]); quad(outP,outN,p[0],p[4],p[7],p[3]); quad(outP,outN,p[5],p[1],p[2],p[6]); quad(outP,outN,p[3],p[7],p[6],p[2]); quad(outP,outN,p[0],p[1],p[5],p[4]);
+  }
+  function loadDemo(){
+    var p=[],n=[];
+    box(p,n,[0,0,-.3],[42,32,.6]);
+    box(p,n,[0,0,2.1],[20,14,4.2]);
+    box(p,n,[-13,7,1.5],[6,10,3]);
+    box(p,n,[13,-7,2.8],[8,12,5.6]);
+    disposeModelMeshes(); modelPositions=new Float32Array(p); modelMeshes=[makeMesh(modelPositions,new Float32Array(n))];
+    modelCenter=[0,0,0]; modelRadius=26; modelName="演示场景"; selected={point:[0,0,4.2],normal:[0,0,1]}; camera={yaw:-.72,pitch:.72,distance:44,target:[0,0,2.8]};
+    fileStatus.textContent="演示场景 · 1 单位 = 1 米"; hint.innerHTML="<strong>已载入演示模型</strong><span class='dot'>·</span>拖动旋转，滚轮缩放；点“选屋顶面”后在模型上单击。";
+    updatePlaneCard("演示屋顶 · 水平面"); generatePanels(false); updateMarker(); setStatus("阵列已生成，可直接调整参数。",false);
+  }
+
+  function normalizePath(path){
+    var parts=String(path||"").replace(/\\/g,"/").split("/"),out=[];
+    parts.forEach(function(part){if(!part||part===".")return;if(part==="..")out.pop();else out.push(part);});
+    return out.join("/");
+  }
+  function filePath(file){return normalizePath(file.webkitRelativePath||file._relativePath||file.name);}
+  function dirname(path){var p=normalizePath(path),i=p.lastIndexOf("/");return i<0?"":p.slice(0,i);}
+  function buildFileIndex(files){
+    var byPath={},byName={};
+    files.forEach(function(file){var p=filePath(file),k=p.toLowerCase(),n=file.name.toLowerCase();byPath[k]=file;(byName[n]||(byName[n]=[])).push(file);});
+    return {byPath:byPath,byName:byName};
+  }
+  function resolveFile(index,baseDir,ref){
+    var clean=String(ref||"").trim().replace(/^['"]|['"]$/g,"");
+    var candidates=[normalizePath((baseDir?baseDir+"/":"")+clean),normalizePath(clean)];
+    for(var i=0;i<candidates.length;i++){var found=index.byPath[candidates[i].toLowerCase()];if(found)return found;}
+    var name=normalizePath(clean).split("/").pop().toLowerCase(),same=index.byName[name];return same&&same.length===1?same[0]:null;
+  }
+  function readText(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(String(r.result));};r.onerror=function(){reject(new Error("无法读取 "+file.name));};r.readAsText(file);});}
+  function parseMTL(text,path,index){
+    var result={},current=null,i=0,base=dirname(path);
+    while(i<text.length){var j=text.indexOf("\n",i);if(j<0)j=text.length;var line=text.slice(i,j).trim();i=j+1;if(!line||line[0]==="#")continue;
+      var space=line.search(/\s/),key=(space<0?line:line.slice(0,space)).toLowerCase(),rest=space<0?"":line.slice(space).trim();
+      if(key==="newmtl"){current={name:rest,kd:[.62,.66,.67,1],textureFile:null,textureRequested:false};result[rest]=current;}
+      else if(key==="kd"&&current){var c=rest.split(/\s+/).map(Number);if(c.length>=3&&c.every(Number.isFinite))current.kd=[c[0],c[1],c[2],1];}
+      else if(key==="map_kd"&&current){
+        current.textureRequested=true;var direct=resolveFile(index,base,rest),parts=rest.match(/(?:[^\s"]+|"[^"]*")+/g)||[];
+        if(!direct)for(var s=0;s<parts.length;s++){direct=resolveFile(index,base,parts.slice(s).join(" ").replace(/"/g,""));if(direct)break;}
+        current.textureFile=direct;
+      }
+    }
+    return result;
+  }
+  function materialsForOBJ(text,objPath,index,libraries){
+    var scope={},refs=[],match,re=/^\s*mtllib\s+(.+)$/gmi,base=dirname(objPath);
+    while((match=re.exec(text))){var whole=resolveFile(index,base,match[1]);if(whole)refs.push(whole);else match[1].split(/\s+/).forEach(function(part){var file=resolveFile(index,base,part);if(file)refs.push(file);});}
+    if(!refs.length){var stem=objPath.replace(/\.obj$/i,".mtl"),same=index.byPath[normalizePath(stem).toLowerCase()];if(same)refs.push(same);}
+    if(!refs.length&&Object.keys(libraries).length===1){var only=libraries[Object.keys(libraries)[0]];Object.keys(only).forEach(function(name){scope[name]=only[name];});return scope;}
+    refs.forEach(function(file){var lib=libraries[filePath(file).toLowerCase()];if(lib)Object.keys(lib).forEach(function(name){scope[name]=lib[name];});});return scope;
+  }
+  function objIndex(raw,count){var n=parseInt(raw,10);if(!Number.isFinite(n)||n===0)return -1;return n<0?count+n:n-1;}
+  function parseOBJGeometry(text,path,materials,budget,bounds){
+    var verts=[],uvs=[],groups={},current="__default__",i=0,start=budget.used;
+    function group(){return groups[current]||(groups[current]={material:current,positions:[],normals:[],uvs:[]});}
+    while(i<text.length){var j=text.indexOf("\n",i);if(j<0)j=text.length;var line=text.slice(i,j).trim();i=j+1;if(!line||line[0]==="#")continue;
+      if(line.slice(0,2)==="v "){
+        var a=line.split(/\s+/),x=Number(a[1]),y=Number(a[2]),z=Number(a[3]);
+        if(Number.isFinite(x)&&Number.isFinite(y)&&Number.isFinite(z)){verts.push(x,y,z);bounds.min[0]=Math.min(bounds.min[0],x);bounds.min[1]=Math.min(bounds.min[1],y);bounds.min[2]=Math.min(bounds.min[2],z);bounds.max[0]=Math.max(bounds.max[0],x);bounds.max[1]=Math.max(bounds.max[1],y);bounds.max[2]=Math.max(bounds.max[2],z);}
+      }else if(line.slice(0,3)==="vt "){
+        var uv=line.split(/\s+/),u=Number(uv[1]),v=Number(uv[2]);uvs.push(Number.isFinite(u)?u:0,Number.isFinite(v)?v:0);
+      }else if(line.slice(0,7).toLowerCase()==="usemtl "){current=line.slice(7).trim()||"__default__";}
+      else if(line.slice(0,2)==="f "&&budget.used<budget.limit){
+        var bits=line.slice(2).trim().split(/\s+/),refs=[];
+        for(var b=0;b<bits.length;b++){var pair=bits[b].split("/");refs.push({v:objIndex(pair[0],verts.length/3),t:pair[1]?objIndex(pair[1],uvs.length/2):-1});}
+        for(var t=1;t<refs.length-1&&budget.used<budget.limit;t++){
+          var rr=[refs[0],refs[t],refs[t+1]];if(rr.some(function(r){return r.v<0||r.v*3+2>=verts.length;}))continue;
+          var aa=verts.slice(rr[0].v*3,rr[0].v*3+3),bb=verts.slice(rr[1].v*3,rr[1].v*3+3),cc=verts.slice(rr[2].v*3,rr[2].v*3+3),nn=norm(cross(sub(bb,aa),sub(cc,aa))),g=group();
+          rr.forEach(function(r){g.positions.push(verts[r.v*3],verts[r.v*3+1],verts[r.v*3+2]);g.normals.push(nn[0],nn[1],nn[2]);if(r.t>=0&&r.t*2+1<uvs.length)g.uvs.push(uvs[r.t*2],uvs[r.t*2+1]);else g.uvs.push(0,0);});budget.used++;
+        }
+      }
+    }
+    if(budget.used===start)return [];
+    return Object.keys(groups).map(function(key){var g=groups[key];g.materialInfo=materials[key]||null;g.source=path;return g;}).filter(function(g){return g.positions.length;});
+  }
+  function createTexture(file){
+    return new Promise(function(resolve){var url=URL.createObjectURL(file),img=new Image();
+      img.onload=function(){var tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);URL.revokeObjectURL(url);resolve(tex);};
+      img.onerror=function(){URL.revokeObjectURL(url);resolve(null);};img.src=url;
+    });
+  }
+  function loadModelFiles(fileList){
+    var files=Array.prototype.slice.call(fileList||[]),objFiles=files.filter(function(f){return /\.obj$/i.test(f.name);}),mtlFiles=files.filter(function(f){return /\.mtl$/i.test(f.name);});
+    if(!objFiles.length){setStatus("所选内容中没有找到 .obj 文件。请选择完整模型文件夹。",true);return;}
+    var total=files.reduce(function(sum,f){return sum+f.size;},0);if(total>750*1024*1024){setStatus("所选文件总量超过 750 MB，浏览器内存可能不足，请先精简模型。",true);return;}
+    var index=buildFileIndex(files),root=filePath(objFiles[0]).split("/")[0]||objFiles[0].name,budget={used:0,limit:800000},bounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]},materialLibraries={};
+    loading.classList.add("show");loadingText.textContent="正在读取 "+objFiles.length+" 个 OBJ 与材质文件…";
+    Promise.all(mtlFiles.map(function(file){return readText(file).then(function(text){materialLibraries[filePath(file).toLowerCase()]=parseMTL(text,filePath(file),index);});})).then(function(){
+      loadingText.textContent="正在解析顶点、UV 与三角面…";
+      return Promise.all(objFiles.map(function(file){return readText(file).then(function(text){var scoped=materialsForOBJ(text,filePath(file),index,materialLibraries);return parseOBJGeometry(text,filePath(file),scoped,budget,bounds);});}));
+    }).then(function(groupSets){
+      var groups=[];groupSets.forEach(function(set){groups=groups.concat(set);});if(!groups.length)throw new Error("未找到可用的 OBJ 顶点与面");
+      var center=[(bounds.min[0]+bounds.max[0])/2,(bounds.min[1]+bounds.max[1])/2,(bounds.min[2]+bounds.max[2])/2],size=sub(bounds.max,bounds.min),radius=Math.max(len(size)/2,1),allLength=0;
+      groups.forEach(function(g){for(var i=0;i<g.positions.length;i+=3){g.positions[i]-=center[0];g.positions[i+1]-=center[1];g.positions[i+2]-=center[2];}allLength+=g.positions.length;});
+      var all=new Float32Array(allLength),offset=0,newMeshes=[];groups.forEach(function(g){var pp=new Float32Array(g.positions),mesh=makeMesh(pp,new Float32Array(g.normals),gl.TRIANGLES,new Float32Array(g.uvs));all.set(pp,offset);offset+=pp.length;if(g.materialInfo){mesh.color=g.materialInfo.kd;mesh.textureFile=g.materialInfo.textureFile;mesh.textureRequested=g.materialInfo.textureRequested;}newMeshes.push(mesh);});
+      loadingText.textContent="正在载入贴图…";
+      var referenced=newMeshes.filter(function(mesh){return !!mesh.textureRequested;}).length;
+      return Promise.all(newMeshes.map(function(mesh){if(!mesh.textureFile)return Promise.resolve(false);return createTexture(mesh.textureFile).then(function(tex){mesh.texture=tex;return !!tex;});})).then(function(textureResults){
+        disposeModelMeshes();modelMeshes=newMeshes;modelPositions=all;modelCenter=center;modelRadius=radius;modelName=root;disposeMesh(panelMesh);disposeMesh(panelLines);panelMesh=null;panelLines=null;selected=null;updateMarker();camera={yaw:-.72,pitch:.72,distance:Math.max(radius*2.3,4),target:[0,0,0]};
+        var loadedTextures=textureResults.filter(Boolean).length,missing=Math.max(0,referenced-loadedTextures),truncated=budget.used>=budget.limit;
+        fileStatus.textContent=root+" · "+objFiles.length+" OBJ · "+budget.used.toLocaleString()+" 三角面 · "+loadedTextures+" 贴图";
+        hint.innerHTML="<strong>文件夹模型已载入</strong><span class='dot'>·</span>点“选屋顶面”，再在目标屋顶上单击。";updatePlaneCard();updateStats(0);
+        var message=loadedTextures?"模型与 "+loadedTextures+" 张贴图已载入。下一步：选择屋顶面。":"几何已载入，但未找到可用贴图；请确认所选文件夹包含 MTL 与 JPG/PNG 贴图。";
+        if(missing)message+=" 另有 "+missing+" 张贴图未能读取。";if(truncated)message+=" 模型过大，预览只读取前 800,000 个三角面。";setStatus(message,!loadedTextures||truncated);
+      });
+    }).catch(function(err){setStatus("模型文件夹解析失败："+err.message,true);}).then(function(){loading.classList.remove("show");});
+  }
+
+  function inputNum(id,min,max){var v=Number(document.getElementById(id).value);if(!Number.isFinite(v))v=min;return Math.min(max,Math.max(min,v));}
+  function panelParams(){return {length:inputNum("panelL",.1,20),width:inputNum("panelW",.1,10),power:inputNum("power",1,3000),tilt:inputNum("tilt",0,60),rows:Math.round(inputNum("rows",1,50)),cols:Math.round(inputNum("cols",1,50)),rowGap:inputNum("rowGap",0,20),colGap:inputNum("colGap",0,5),azimuth:inputNum("azimuth",-180,180),eastOffset:inputNum("offsetEW",-20,20),northOffset:inputNum("offsetNS",-20,20),heightOffset:inputNum("offsetH",-5,5),planePitch:inputNum("planePitch",-10,10),planeRoll:inputNum("planeRoll",-10,10)};}
+  function adjustedPlane(pp){
+    var n0=norm(selected.normal); if(n0[2]<0)n0=mul(n0,-1);
+    var seed=Math.abs(dot(n0,[1,0,0]))<.9?[1,0,0]:[0,1,0];
+    var east0=norm(sub(seed,mul(n0,dot(seed,n0)))),north0=norm(cross(n0,east0));
+    var pitch=pp.planePitch*Math.PI/180,roll=pp.planeRoll*Math.PI/180;
+    var north1=norm(rotateAround(north0,east0,pitch)),normal1=norm(rotateAround(n0,east0,pitch));
+    var east2=norm(rotateAround(east0,north1,roll)),normal2=norm(rotateAround(normal1,north1,roll));
+    var north2=norm(cross(normal2,east2)); east2=norm(cross(north2,normal2));
+    var center=add(selected.point,add(mul(east2,pp.eastOffset),add(mul(north2,pp.northOffset),mul(normal2,pp.heightOffset))));
+    return {center:center,east:east2,north:north2,normal:normal2};
+  }
+  function pushOrientedBox(p,n,lines,center,ax,ay,az,sx,sy,sz){
+    var hx=mul(ax,sx/2),hy=mul(ay,sy/2),hz=mul(az,sz/2); var c=[];
+    [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].forEach(function(s){c.push(add(center,add(mul(hx,s[0]),add(mul(hy,s[1]),mul(hz,s[2])))));});
+    quad(p,n,c[4],c[5],c[6],c[7]);quad(p,n,c[1],c[0],c[3],c[2]);quad(p,n,c[0],c[4],c[7],c[3]);quad(p,n,c[5],c[1],c[2],c[6]);quad(p,n,c[3],c[7],c[6],c[2]);quad(p,n,c[0],c[1],c[5],c[4]);
+    var edges=[[4,5],[5,6],[6,7],[7,4],[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6],[3,7]];edges.forEach(function(e){lines.push.apply(lines,c[e[0]].concat(c[e[1]]));});
+  }
+  function generatePanels(report){
+    if(!selected){setStatus("请先点击“选屋顶面”，再在模型上选择一个三角面。",true);return;}
+    var pp=panelParams(),plane=adjustedPlane(pp),n=plane.normal,u=plane.east,v=plane.north;
+    var a=pp.azimuth*Math.PI/180,ur=add(mul(u,Math.cos(a)),mul(v,Math.sin(a))),vr=add(mul(u,-Math.sin(a)),mul(v,Math.cos(a)));
+    var tilt=pp.tilt*Math.PI/180,rowDir=norm(add(mul(vr,Math.cos(tilt)),mul(n,Math.sin(tilt)))),panelN=norm(cross(ur,rowDir)); if(dot(panelN,n)<0)panelN=mul(panelN,-1);
+    var pitchX=pp.width+pp.colGap,pitchY=pp.length*Math.cos(tilt)+pp.rowGap,p=[],nn=[],lines=[];
+    for(var r=0;r<pp.rows;r++)for(var c=0;c<pp.cols;c++){
+      var dx=(c-(pp.cols-1)/2)*pitchX,dy=(r-(pp.rows-1)/2)*pitchY; var center=add(plane.center,add(mul(ur,dx),add(mul(vr,dy),mul(n,.10+Math.sin(tilt)*pp.length/2))));
+      pushOrientedBox(p,nn,lines,center,ur,rowDir,panelN,pp.width,pp.length,.055);
+    }
+    disposeMesh(panelMesh);disposeMesh(panelLines);panelMesh=makeMesh(new Float32Array(p),new Float32Array(nn));
+    var ln=new Float32Array(lines),lnn=new Float32Array(lines.length);for(var i=2;i<lnn.length;i+=3)lnn[i]=1;panelLines=makeMesh(ln,lnn,gl.LINES);
+    updateStats(pp.rows*pp.cols); if(report!==false)setStatus("已更新 "+(pp.rows*pp.cols)+" 块组件。",false);
+  }
+  function updateStats(count){var p=panelParams();document.getElementById("countStat").textContent=count.toLocaleString();document.getElementById("kwpStat").textContent=(count*p.power/1000).toFixed(2);document.getElementById("areaStat").textContent=(count*p.length*p.width).toFixed(1);}
+  function updatePlaneCard(label){
+    var card=document.getElementById("planeCard"),co=document.getElementById("planeCoords");
+    if(!selected){card.querySelector("strong").textContent="尚未选择";co.textContent="点击“选屋顶面”开始定位";return;}
+    var baseWorld=add(selected.point,modelCenter),plane=adjustedPlane(panelParams()),adjustedWorld=add(plane.center,modelCenter);
+    card.querySelector("strong").textContent=label||"已选模型三角面";
+    co.innerHTML="点选中心 ("+baseWorld.map(function(x){return x.toFixed(2);}).join(", ")+")<br>点选法向 ("+selected.normal.map(function(x){return x.toFixed(3);}).join(", ")+")<br>调整后中心 ("+adjustedWorld.map(function(x){return x.toFixed(2);}).join(", ")+")<br>调整后法向 ("+plane.normal.map(function(x){return x.toFixed(3);}).join(", ")+")";
+  }
+  function updateMarker(){
+    disposeMesh(markerMesh);markerMesh=null;if(!selected)return;var plane=adjustedPlane(panelParams()),p=plane.center,n=plane.normal,u=plane.east,v=plane.north,s=Math.max(modelRadius*.018,.3),pts=[];
+    pts.push.apply(pts,add(p,mul(u,-s)).concat(add(p,mul(u,s)),add(p,mul(v,-s)),add(p,mul(v,s)),p,add(p,mul(n,s*1.8))));var ns=new Float32Array(pts.length);for(var i=2;i<ns.length;i+=3)ns[i]=1;markerMesh=makeMesh(new Float32Array(pts),ns,gl.LINES);
+  }
+  function setStatus(msg,error){statusLine.textContent=msg;statusLine.classList.toggle("error",!!error);}
+
+  function rayTriangle(orig,dir,a,b,c){
+    var e1=sub(b,a),e2=sub(c,a),h=cross(dir,e2),det=dot(e1,h);if(Math.abs(det)<1e-8)return null;var inv=1/det,s=sub(orig,a),u=inv*dot(s,h);if(u<0||u>1)return null;var q=cross(s,e1),v=inv*dot(dir,q);if(v<0||u+v>1)return null;var t=inv*dot(e2,q);return t>1e-5?t:null;
+  }
+  function pickAt(clientX,clientY){
+    if(!modelPositions)return;var r=canvas.getBoundingClientRect(),x=((clientX-r.left)/r.width)*2-1,y=1-((clientY-r.top)/r.height)*2,inv=invert(lastVP);if(!inv)return;
+    var near=transform4(inv,[x,y,-1,1]),far=transform4(inv,[x,y,1,1]);near=[near[0]/near[3],near[1]/near[3],near[2]/near[3]];far=[far[0]/far[3],far[1]/far[3],far[2]/far[3]];var dir=norm(sub(far,near)),best=Infinity,bestP=null,bestN=null;
+    for(var i=0;i<modelPositions.length;i+=9){var a=[modelPositions[i],modelPositions[i+1],modelPositions[i+2]],b=[modelPositions[i+3],modelPositions[i+4],modelPositions[i+5]],c=[modelPositions[i+6],modelPositions[i+7],modelPositions[i+8]],t=rayTriangle(near,dir,a,b,c);if(t!==null&&t<best){best=t;bestP=add(near,mul(dir,t));bestN=norm(cross(sub(b,a),sub(c,a)));}}
+    if(bestP){if(bestN[2]<0)bestN=mul(bestN,-1);selected={point:add(bestP,mul(bestN,.03)),normal:bestN};updateMarker();updatePlaneCard();pickMode=false;pickBtn.classList.remove("active");canvas.classList.remove("pick");pickBtn.textContent="选屋顶面";generatePanels(false);setStatus("基准面已更新，阵列已移动到新位置。",false);hint.innerHTML="<strong>基准面已选</strong><span class='dot'>·</span>在右侧修改行列、倾角和间距。";}else setStatus("未命中模型，请换个位置重试。",true);
+  }
+
+  var pointer=null,moved=false,pointers={};
+  canvas.addEventListener("pointerdown",function(e){canvas.setPointerCapture(e.pointerId);pointers[e.pointerId]=[e.clientX,e.clientY];if(Object.keys(pointers).length===1){pointer={x:e.clientX,y:e.clientY,yaw:camera.yaw,pitch:camera.pitch};moved=false;}});
+  canvas.addEventListener("pointermove",function(e){
+    if(!pointers[e.pointerId])return;pointers[e.pointerId]=[e.clientX,e.clientY];var ids=Object.keys(pointers);
+    if(ids.length===1&&pointer){var dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;if(Math.hypot(dx,dy)>4)moved=true;camera.yaw=pointer.yaw-dx*.007;camera.pitch=Math.max(-.1,Math.min(1.48,pointer.pitch+dy*.007));}
+  });
+  canvas.addEventListener("pointerup",function(e){if(pickMode&&!moved)pickAt(e.clientX,e.clientY);delete pointers[e.pointerId];pointer=null;});
+  canvas.addEventListener("pointercancel",function(e){delete pointers[e.pointerId];pointer=null;});
+  canvas.addEventListener("wheel",function(e){e.preventDefault();camera.distance=Math.max(modelRadius*.08,Math.min(modelRadius*12,camera.distance*Math.exp(e.deltaY*.001)));},{passive:false});
+
+  document.getElementById("loadBtn").onclick=function(){document.getElementById("folderInput").click();};
+  document.getElementById("folderInput").onchange=function(e){loadModelFiles(e.target.files);e.target.value="";};
+  document.getElementById("demoBtn").onclick=loadDemo;
+  pickBtn.onclick=function(){pickMode=!pickMode;pickBtn.classList.toggle("active",pickMode);canvas.classList.toggle("pick",pickMode);pickBtn.textContent=pickMode?"请点击模型…":"选屋顶面";setStatus(pickMode?"选择模式已开启：请在目标屋顶上单击。":"已取消选择模式。",false);};
+  document.getElementById("generateBtn").onclick=function(){generatePanels(true);};
+  document.getElementById("clearBtn").onclick=function(){disposeMesh(panelMesh);disposeMesh(panelLines);panelMesh=null;panelLines=null;updateStats(0);setStatus("组件已清除，基准面仍保留。",false);};
+  document.getElementById("homeBtn").onclick=function(){camera={yaw:-.72,pitch:.72,distance:Math.max(modelRadius*1.75,5),target:[0,0,0]};};
+  document.getElementById("zoomIn").onclick=function(){camera.distance=Math.max(modelRadius*.08,camera.distance*.78);};
+  document.getElementById("zoomOut").onclick=function(){camera.distance=Math.min(modelRadius*12,camera.distance*1.28);};
+  document.getElementById("shotBtn").onclick=function(){
+    render();canvas.toBlob(function(blob){if(!blob){setStatus("图片导出失败。",true);return;}downloadBlob(blob,"pv-layout-"+new Date().toISOString().slice(0,10)+".png");setStatus("PNG 图片已下载。",false);},"image/png");
+  };
+  function downloadBlob(blob,name){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},500);}
+  document.getElementById("jsonBtn").onclick=function(){
+    var data={version:1,model:{name:modelName,coordinateOffset:modelCenter,unit:"meter",upAxis:"Z"},selection:selected?{pointLocal:selected.point,pointOriginal:add(selected.point,modelCenter),normal:selected.normal}:null,array:panelParams(),summary:{count:Number(document.getElementById("countStat").textContent.replace(/,/g,"")),capacityKwp:Number(document.getElementById("kwpStat").textContent),moduleAreaM2:Number(document.getElementById("areaStat").textContent)}};
+    downloadBlob(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),"pv-layout-params.json");setStatus("排布参数 JSON 已下载。",false);
+  };
+
+  ["panelL","panelW","power","tilt","rows","cols","rowGap","colGap","azimuth"].forEach(function(id){document.getElementById(id).addEventListener("change",function(){if(panelMesh)generatePanels(false);});});
+  function refreshAdjustment(message){
+    if(panelMesh)generatePanels(false);
+    updateMarker(); updatePlaneCard();
+    if(message)setStatus(message,false);
+  }
+  ["offsetEW","offsetNS","offsetH","planePitch","planeRoll"].forEach(function(id){document.getElementById(id).addEventListener("input",function(){refreshAdjustment("阵列位置与基准角度已更新。");});});
+  document.getElementById("resetPosition").onclick=function(){["offsetEW","offsetNS","offsetH"].forEach(function(id){document.getElementById(id).value="0";});refreshAdjustment("位置偏移已归零。");};
+  document.getElementById("resetAngle").onclick=function(){["planePitch","planeRoll"].forEach(function(id){document.getElementById(id).value="0";});refreshAdjustment("平面角度修正已归零。");};
+  function collectEntry(entry,prefix,out){
+    return new Promise(function(resolve){
+      if(entry.isFile){entry.file(function(file){file._relativePath=normalizePath(prefix+file.name);out.push(file);resolve();},resolve);return;}
+      if(!entry.isDirectory){resolve();return;}
+      var reader=entry.createReader(),children=[];
+      function readBatch(){reader.readEntries(function(batch){if(!batch.length){Promise.all(children.map(function(child){return collectEntry(child,prefix+entry.name+"/",out);})).then(resolve);return;}children=children.concat(Array.prototype.slice.call(batch));readBatch();},resolve);}readBatch();
+    });
+  }
+  function collectDropFiles(dataTransfer){
+    var items=Array.prototype.slice.call(dataTransfer.items||[]),entries=items.map(function(item){return item.webkitGetAsEntry?item.webkitGetAsEntry():null;}).filter(Boolean),out=[];
+    if(!entries.length)return Promise.resolve(Array.prototype.slice.call(dataTransfer.files||[]));
+    return Promise.all(entries.map(function(entry){return collectEntry(entry,"",out);})).then(function(){return out;});
+  }
+  ["dragenter","dragover"].forEach(function(ev){stage.addEventListener(ev,function(e){e.preventDefault();stage.classList.add("dragging");});});
+  ["dragleave","drop"].forEach(function(ev){stage.addEventListener(ev,function(e){e.preventDefault();stage.classList.remove("dragging");});});
+  stage.addEventListener("drop",function(e){collectDropFiles(e.dataTransfer).then(loadModelFiles);});
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(){});
+
+  gl.enable(gl.DEPTH_TEST);
+  loadDemo();
+  updateMarker();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
