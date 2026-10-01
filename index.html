@@ -51,7 +51,8 @@
     button { color: inherit; }
     .app {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 348px;
+      grid-template-columns: 348px minmax(0, 1fr) 348px;
+      grid-template-rows: auto minmax(0, 1fr);
       height: 100dvh;
       min-height: 620px;
       gap: 0;
@@ -59,9 +60,12 @@
     .stage {
       position: relative;
       min-width: 0;
+      min-height: 0;
       overflow: hidden;
       background: var(--canvas);
       isolation: isolate;
+      grid-column: 2;
+      grid-row: 2;
     }
     #glCanvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
     #glCanvas:active { cursor: grabbing; }
@@ -171,15 +175,44 @@
     .bar::after { content: ""; display: block; width: 40%; height: 100%; background: var(--accent); animation: load 1s ease-in-out infinite alternate; }
     @keyframes load { to { transform: translateX(150%); } }
 
-    aside {
+    .summary-bar {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 10px 16px;
+      padding: 10px 18px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    .summary-head { display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: none; min-width: 118px; }
+    .summary-head h2 { margin: 0; font-size: 15px; white-space: nowrap; }
+    .summary-head .sub { margin: 0; font-size: 11px; white-space: nowrap; }
+    .summary-bar .stats { flex: 1 1 auto; align-items: stretch; }
+    .summary-bar .roof-summary { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0; }
+    .summary-bar .roof-summary-row {
+      flex: 0 1 auto;
+      min-width: 250px;
+      gap: 14px;
+      align-items: baseline;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 5px 10px;
+    }
+
+    .panel {
       min-width: 0;
+      min-height: 0;
       height: 100%;
       overflow: auto;
       background: var(--panel);
-      border-left: 1px solid var(--line);
       padding: 20px;
       scrollbar-width: thin;
     }
+    .panel-left { grid-column: 1; grid-row: 2; border-right: 1px solid var(--line); }
+    .panel-right { grid-column: 3; grid-row: 2; border-left: 1px solid var(--line); }
     .section { padding: 0 0 19px; margin: 0 0 19px; border-bottom: 1px solid var(--line); }
     .section:last-child { border-bottom: 0; margin-bottom: 0; }
     h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.01em; }
@@ -218,9 +251,8 @@
       cursor: pointer;
     }
     .generate:hover { background: var(--accent-strong); }
-    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
-    .stat { padding: 11px 8px 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; }
-    .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; }
+    .stat { flex: 1 1 112px; max-width: 220px; text-align: center; padding: 8px 10px 7px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; }
     .validation-hints { display: grid; gap: 4px; margin-top: 10px; }
     .validation-hint { display: none; margin: 0; color: var(--warn); font-size: 11.5px; line-height: 1.4; }
     .validation-hint.show { display: block; }
@@ -273,11 +305,21 @@
     .roof-summary-row b { color: var(--ink); text-align: right; }
     .empty { padding: 10px 0; color: var(--muted); font-size: 12px; }
 
+    @media (max-width: 1180px) {
+      .app { grid-template-columns: 300px minmax(0, 1fr) 300px; }
+    }
     @media (max-width: 760px) {
       body { overflow: auto; }
       .app { display: block; height: auto; min-height: 100dvh; }
+      .summary-bar { padding: 12px 12px 11px; gap: 9px 10px; }
+      .summary-head { flex: 1 1 100%; min-width: 0; }
+      .summary-head h2 { white-space: normal; }
+      .summary-head .sub { white-space: normal; }
+      .summary-bar .stats { flex: 1 1 100%; }
+      .summary-bar .stat { flex: 1 1 calc(33.333% - 8px); max-width: none; }
+      .summary-bar .roof-summary-row { flex: 1 1 100%; min-width: 0; }
       .stage { height: 56dvh; min-height: 390px; }
-      aside { height: auto; overflow: visible; border-left: 0; border-top: 1px solid var(--line); padding: 17px 16px max(24px, env(safe-area-inset-bottom)); }
+      .panel { height: auto; overflow: visible; border-left: 0; border-right: 0; border-top: 1px solid var(--line); padding: 17px 16px max(24px, env(safe-area-inset-bottom)); }
       .toolbar { left: 10px; right: 10px; top: 10px; gap: 6px; }
       .tool-btn { padding: 8px 10px; min-height: 36px; font-size: 12px; }
       .file-status { order: 5; width: 100%; margin-left: 0; max-width: none; font-size: 11px; text-align: left; background: color-mix(in srgb, var(--panel-2), transparent 15%); }
@@ -287,14 +329,29 @@
     }
     @media (max-width: 410px) {
       .fields { grid-template-columns: 1fr 1fr; }
-      .stats { grid-template-columns: 1fr; }
-      .stat { display: flex; align-items: baseline; justify-content: space-between; }
+      .summary-bar .stat { flex: 1 1 calc(50% - 8px); }
     }
     @media (prefers-reduced-motion: reduce) { .bar::after { animation: none; width: 100%; } }
   </style>
 </head>
 <body>
   <div class="app">
+    <header class="summary-bar" aria-label="项目统计汇总">
+      <div class="summary-head">
+        <h2>统计汇总</h2>
+        <p class="sub">隐藏仅影响视图，统计仍计入全部屋面。</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="stringCountStat">4</b><span>完整串数</span></div>
+        <div class="stat"><b id="panelsPerStringStat">8</b><span>完整串每串块数</span></div>
+        <div class="stat"><b id="incompleteStringStat">0 × 0</b><span>不完整串 × 块数</span></div>
+        <div class="stat"><b id="countStat">32</b><span>组件块数</span></div>
+        <div class="stat"><b id="kwpStat">19.84</b><span>装机容量 kWp</span></div>
+        <div class="stat"><b id="areaStat">86.4</b><span>组件总表面积 m²</span></div>
+      </div>
+      <div class="roof-summary" id="roofSummary"></div>
+    </header>
+
     <section class="stage" id="stage" aria-label="三维模型视图">
       <canvas id="glCanvas"></canvas>
       <div class="toolbar">
@@ -314,7 +371,7 @@
       <input id="folderInput" type="file" webkitdirectory directory multiple hidden />
     </section>
 
-    <aside>
+    <aside class="panel panel-left" aria-label="排布方案配置">
       <section class="section">
         <div class="library-head"><h2>排布方案库</h2><button class="mini" id="addSchemeBtn">新建方案</button></div>
         <p class="sub">参数以方案为单位保存；编辑当前方案会同步更新关联屋面。</p>
@@ -370,6 +427,9 @@
         <div class="status-line" id="statusLine">已载入演示项目。</div>
       </section>
 
+    </aside>
+
+    <aside class="panel panel-right" aria-label="屋面与项目">
       <section class="section">
         <div class="library-head"><h2>屋面管理</h2><button class="mini" id="addRoofBtn">新增屋面</button></div>
         <p class="sub">每个屋面独立基准面、范围、关联方案与显示状态。</p>
@@ -388,20 +448,6 @@
           </div>
           <div class="manager-meta" id="polygonStatus">尚未绘制范围</div>
         </div>
-      </section>
-
-      <section class="section">
-        <h2>统计汇总</h2>
-        <p class="sub">隐藏仅影响视图，统计仍计入全部屋面。</p>
-        <div class="stats">
-          <div class="stat"><b id="stringCountStat">4</b><span>完整串数</span></div>
-          <div class="stat"><b id="panelsPerStringStat">8</b><span>完整串每串块数</span></div>
-          <div class="stat"><b id="incompleteStringStat">0 × 0</b><span>不完整串 × 块数</span></div>
-          <div class="stat"><b id="countStat">32</b><span>组件块数</span></div>
-          <div class="stat"><b id="kwpStat">19.84</b><span>装机容量 kWp</span></div>
-          <div class="stat"><b id="areaStat">86.4</b><span>组件总表面积 m²</span></div>
-        </div>
-        <div class="roof-summary" id="roofSummary"></div>
       </section>
 
       <section class="section">
